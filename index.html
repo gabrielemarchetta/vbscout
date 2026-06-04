@@ -291,8 +291,16 @@ video{width:100%;border-radius:14px;background:#000;display:block}
       </div>
     </div>
 
-    <!-- step 1: player -->
-    <div class="sec-title">1 · Giocatore</div>
+    <!-- quick generic points -->
+    <div class="card" id="quickPanel">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:10px">Punto rapido · aggiorna il punteggio</div>
+      <div class="outs">
+        <button class="out g" data-q="us|point"><span class="badge">✓</span><span class="lbl">Punto nostro<br><small style="color:var(--mut);font-weight:600">generico → +1 NOI</small></span></button>
+        <button class="out g" data-q="opp|error"><span class="badge">✓</span><span class="lbl">Errore avversario<br><small style="color:var(--mut);font-weight:600">→ +1 NOI</small></span></button>
+        <button class="out b" data-q="us|error"><span class="badge">✗</span><span class="lbl">Errore/fallo nostro<br><small style="color:var(--mut);font-weight:600">→ +1 AVV.</small></span></button>
+        <button class="out b" data-q="opp|point"><span class="badge">✗</span><span class="lbl">Punto avversario<br><small style="color:var(--mut);font-weight:600">→ +1 AVV.</small></span></button>
+      </div>
+    </div>
     <div class="card"><div class="pgrid" id="scoutPlayers"></div></div>
 
     <!-- step 2: fundamental -->
@@ -661,12 +669,32 @@ $('#newSetBtn').onclick=async()=>{
   await put('matches',m);renderScore();toast('Nuovo set '+(m.curSet+1));
 };
 
+// timestamp del video attivo (file o youtube), null se non in modalità video
+function currentVideoTime(){
+  if(S.mode!=='video')return null;
+  if(S.vsrc==='yt'&&ytPlayer&&ytPlayer.getCurrentTime)return +ytPlayer.getCurrentTime().toFixed(1);
+  const v=$('#vid');return v&&!isNaN(v.currentTime)?+v.currentTime.toFixed(1):null;
+}
+
+// ----- punto rapido / azioni generiche -----
+$$('[data-q]').forEach(b=>b.onclick=async()=>{
+  if(!S.currentMatch)return toast('Nessuna partita attiva');
+  const [side,gtype]=b.dataset.q.split('|');
+  const m=S.currentMatch,s=m.sets[m.curSet];
+  const usPoint=(side==='us'&&gtype==='point')||(side==='opp'&&gtype==='error');
+  if(usPoint)s.us++;else s.them++;
+  await put('matches',m);renderScore();
+  const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side,gtype,
+    setNum:m.curSet+1,mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
+  await put('actions',a);renderLog();
+  toast(usPoint?'Punto NOI ✓':'Punto AVV.');
+});
+
 // ----- mode toggle -----
 $$('#modeSeg button').forEach(b=>b.onclick=()=>{
   S.mode=b.dataset.mode;
   $$('#modeSeg button').forEach(x=>x.classList.toggle('on',x===b));
   $('#videoPanel').classList.toggle('hidden',S.mode!=='video');
-  $('#scorePanel').classList.toggle('hidden',S.mode==='video');
 });
 
 // ----- court -----
@@ -733,14 +761,7 @@ function zoneOf(p){
 async function recordAction(outcomeKey){
   if(!S.selPlayer)return toast('Seleziona un giocatore');
   if(!S.from||!S.to)return toast('Disegna la traiettoria sul campo');
-  let videoTime=null;
-  if(S.mode==='video'){
-    if(S.vsrc==='yt'&&ytPlayer&&ytPlayer.getCurrentTime){
-      videoTime=+ytPlayer.getCurrentTime().toFixed(1);
-    }else{
-      const v=$('#vid');videoTime=v&&!isNaN(v.currentTime)?+v.currentTime.toFixed(1):null;
-    }
-  }
+  const videoTime=currentVideoTime();
   const a={
     id:uid(), matchId:S.currentMatch.id, teamId:S.currentTeam.id,
     playerId:S.selPlayer, fund:S.selFund, outcome:outcomeKey,
@@ -760,15 +781,25 @@ async function recordAction(outcomeKey){
 async function renderLog(){
   const acts=(await getByIndex('actions','match',S.currentMatch.id)).sort((a,b)=>b.ts-a.ts);
   $('#logCount').textContent=acts.length;
-  $('#logList').innerHTML=acts.slice(0,12).map(a=>{
-    const p=S.players.find(x=>x.id===a.playerId);
-    const o=FUNDAMENTALS[a.fund].outcomes.find(x=>x.k===a.outcome);
-    const col=OUTCOME_COLOR[o?.cls]||'#888';
+  $('#logList').innerHTML=acts.slice(0,14).map(a=>{
     const t=a.mode==='video'&&a.videoTime!=null?fmtTime(a.videoTime):'Set '+a.setNum;
+    const delBtn=`<button class="iconbtn sm" data-da="${a.id}" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button>`;
+    if(a.generic){
+      const usPoint=(a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error');
+      const col=usPoint?'var(--good)':'var(--bad)';
+      const lbl={'us|point':'Punto nostro','opp|error':'Errore avversario','us|error':'Errore/fallo nostro','opp|point':'Punto avversario'}[a.side+'|'+a.gtype]||'Azione';
+      return `<div class="logrow"><span class="dot" style="background:${col}"></span>
+        <b style="color:${col}">${usPoint?'+1 NOI':'+1 AVV'}</b> ${lbl}
+        <span class="meta">${t}${delBtn}</span></div>`;
+    }
+    const p=S.players.find(x=>x.id===a.playerId);
+    const fund=FUNDAMENTALS[a.fund];
+    const o=fund?fund.outcomes.find(x=>x.k===a.outcome):null;
+    const col=OUTCOME_COLOR[o?.cls]||'#888';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-      <b>#${p?p.number:'?'}</b> ${FUNDAMENTALS[a.fund].label} <span style="color:${col};font-weight:800">${a.outcome}</span>
+      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>
       <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>
-      <span class="meta">${t}<button class="iconbtn sm" data-da="${a.id}" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button></span></div>`;
+      <span class="meta">${t}${delBtn}</span></div>`;
   }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
   $$('[data-da]').forEach(b=>b.onclick=async()=>{await del('actions',b.dataset.da);renderLog();});
 }
@@ -871,30 +902,37 @@ async function computeStats(){
     const ms=S.matches.filter(m=>m.teamId===S.currentTeam.id);
     for(const m of ms)acts=acts.concat(await getByIndex('actions','match',m.id));
   }else acts=await getByIndex('actions','match',matchId);
-  if(statFund!=='all')acts=acts.filter(a=>a.fund===statFund);
+  // separa azioni tecniche (per giocatore/fondamentale) da quelle generiche (punto rapido)
+  let skill=acts.filter(a=>!a.generic);
+  if(statFund!=='all')skill=skill.filter(a=>a.fund===statFund);
+  const generics=acts.filter(a=>a.generic);
 
-  // team KPIs
-  const tot=acts.length;
-  const pts=acts.filter(a=>['#'].includes(a.outcome)).length;
-  const errs=acts.filter(a=>a.outcome==='=').length;
-  const pos=acts.filter(a=>['#','+'].includes(a.outcome)).length;
-  const eff=tot?Math.round(acts.reduce((s,a)=>{const o=FUNDAMENTALS[a.fund].outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/tot*50):0;
+  // team KPIs (solo azioni tecniche)
+  const tot=skill.length;
+  const pos=skill.filter(a=>['#','+'].includes(a.outcome)).length;
+  const eff=tot?Math.round(skill.reduce((s,a)=>{const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/tot*50):0;
+  let extra='';
+  if(statFund==='all'&&generics.length){
+    const won=generics.filter(a=>(a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error')).length;
+    const lost=generics.length-won;
+    extra=`<div class="kpi" style="grid-column:1/-1"><div class="v" style="font-size:22px"><span style="color:var(--good)">+${won}</span> <span style="color:var(--mut)">/</span> <span style="color:var(--bad)">−${lost}</span></div><div class="l">Punti rapidi (generici) · a favore / contro</div></div>`;
+  }
   $('#teamKpis').innerHTML=`
-    <div class="kpi"><div class="v">${tot}</div><div class="l">Azioni</div></div>
+    <div class="kpi"><div class="v">${tot}</div><div class="l">Azioni tecniche</div></div>
     <div class="kpi"><div class="v" style="color:var(--good)">${tot?Math.round(pos/tot*100):0}%</div><div class="l">Positività</div></div>
-    <div class="kpi"><div class="v" style="color:${eff>=0?'var(--acc2)':'var(--bad)'}">${eff>0?'+':''}${eff}%</div><div class="l">Efficienza</div></div>`;
+    <div class="kpi"><div class="v" style="color:${eff>=0?'var(--acc2)':'var(--bad)'}">${eff>0?'+':''}${eff}%</div><div class="l">Efficienza</div></div>${extra}`;
 
   // per player
   const pls=teamPlayers();
-  if(!tot){$('#playerStatsBox').innerHTML='<div class="empty"><div class="big">📊</div>Nessun dato per questo filtro</div>';return;}
+  if(!tot){$('#playerStatsBox').innerHTML='<div class="empty"><div class="big">📊</div>Nessuna azione tecnica per questo filtro</div>';return;}
   const rows=pls.map(p=>{
-    const pa=acts.filter(a=>a.playerId===p.id);
+    const pa=skill.filter(a=>a.playerId===p.id);
     if(!pa.length)return null;
     const t=pa.length;
     const pP=pa.filter(a=>a.outcome==='#').length;
     const pE=pa.filter(a=>a.outcome==='=').length;
     const pPos=pa.filter(a=>['#','+'].includes(a.outcome)).length;
-    const ef=Math.round(pa.reduce((s,a)=>{const o=FUNDAMENTALS[a.fund].outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/t*50);
+    const ef=Math.round(pa.reduce((s,a)=>{const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/t*50);
     return {p,t,pP,pE,posPct:Math.round(pPos/t*100),ef};
   }).filter(Boolean).sort((a,b)=>b.ef-a.ef);
   $('#playerStatsBox').innerHTML=`<table><thead><tr><th class="pl">Giocatore</th><th>Tot</th><th>Punti</th><th>Err</th><th>Pos%</th><th>Eff%</th></tr></thead><tbody>${rows.map(r=>`
@@ -916,7 +954,12 @@ $('#exportCsv').onclick=async()=>{
   const lines=[head.join(',')];
   for(const a of acts){
     const p=S.players.find(x=>x.id===a.playerId),m=S.matches.find(x=>x.id===a.matchId);
-    lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,`"${p?.name||''}"`,p?.number||'',a.fund,a.outcome,a.fromZone||'',a.toZone||'',a.mode,a.videoTime??''].join(','));
+    if(a.generic){
+      const lbl={'us|point':'punto nostro','opp|error':'errore avversario','us|error':'errore/fallo nostro','opp|point':'punto avversario'}[a.side+'|'+a.gtype]||'generico';
+      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,'','','generico',`"${lbl}"`,'','',a.mode,a.videoTime??''].join(','));
+    }else{
+      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,`"${p?.name||''}"`,p?.number||'',a.fund,a.outcome,a.fromZone||'',a.toZone||'',a.mode,a.videoTime??''].join(','));
+    }
   }
   download(lines.join('\n'),'vbscout-'+(S.currentTeam?.name||'export')+'.csv','text/csv');
 };
