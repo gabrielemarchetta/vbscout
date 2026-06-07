@@ -141,6 +141,31 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .score .box.us .v{color:var(--acc2)}
 .scbtns{display:flex;flex-direction:column;gap:6px;justify-content:center}
 
+/* ---------- sticky score bar ---------- */
+.scorebar{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:14px;padding:9px 11px;margin-bottom:12px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.sb-top{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.sb-top .grow{flex:1}
+.chip.sm{padding:6px 11px;font-size:12px;border-radius:9px}
+.chip.sm b{color:var(--txt);font-family:'Saira Condensed';font-size:14px}
+.chip.rot{background:rgba(74,163,255,.14);border-color:rgba(74,163,255,.4);color:var(--blue)}
+.chip.rot.set{background:rgba(74,163,255,.22)}
+.sb-main{display:flex;gap:10px}
+.sb-box{flex:1;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:6px 8px 8px;text-align:center}
+.sb-box.us{box-shadow:0 0 0 1px rgba(255,106,43,.35) inset}
+.sb-name{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-val{font-family:'Saira Condensed';font-size:44px;font-weight:800;line-height:1;margin:2px 0}
+.sb-box.us .sb-val{color:var(--acc2)}
+.sb-pm{display:flex;gap:6px}
+.sb-pm button{flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--txt);font-size:20px;font-weight:800;padding:1px 0;line-height:1.2}
+.sb-pm button:active{transform:scale(.95)}
+
+/* lineup grid in sheet */
+.lugrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.lucell{background:var(--card2);border:1px solid var(--line2);border-radius:11px;padding:8px}
+.lucell .z{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--blue);font-weight:800;margin-bottom:4px}
+.lucell.net{border-color:rgba(255,106,43,.4)}
+.lucell select{width:100%;background:var(--bg2);border:1px solid var(--line2);color:var(--txt);border-radius:8px;padding:8px 6px;font-size:13px}
+
 /* ---------- log ---------- */
 .logrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;background:var(--card2);border:1px solid var(--line);margin-bottom:7px;font-size:13px}
 .logrow .dot{width:9px;height:9px;border-radius:50%;flex:none}
@@ -231,6 +256,29 @@ video{width:100%;border-radius:14px;background:#000;display:block}
   <div id="scoutNoMatch" class="empty"><div class="big">📋</div>Crea o seleziona una partita<br>nella sezione Partita per iniziare lo scouting.</div>
 
   <div id="scoutLive" class="hidden">
+    <!-- sticky score + rotation bar -->
+    <div class="scorebar" id="scoreBar">
+      <div class="sb-top">
+        <button class="chip sm" id="setNumBtn">SET <b id="setNum">1</b></button>
+        <button class="chip sm" id="newSetBtn">Chiudi set ▸</button>
+        <span class="grow"></span>
+        <button class="chip sm rot" id="rotBtn">ROT <b id="rotLabel">—</b> ↻</button>
+        <button class="chip sm" id="lineupBtn">⚙ Formazione</button>
+      </div>
+      <div class="sb-main">
+        <div class="sb-box us">
+          <div class="sb-name" id="usName">NOI</div>
+          <div class="sb-val" id="usScore">0</div>
+          <div class="sb-pm"><button data-pt="us-">−</button><button data-pt="us+">+</button></div>
+        </div>
+        <div class="sb-box">
+          <div class="sb-name" id="oppName">AVV.</div>
+          <div class="sb-val" id="oppScore">0</div>
+          <div class="sb-pm"><button data-pt="opp-">−</button><button data-pt="opp+">+</button></div>
+        </div>
+      </div>
+    </div>
+
     <!-- mode toggle -->
     <div class="seg" id="modeSeg" style="margin-bottom:12px">
       <button data-mode="live" class="on">● LIVE</button>
@@ -275,22 +323,6 @@ video{width:100%;border-radius:14px;background:#000;display:block}
       </div>
     </div>
 
-    <!-- score (live only) -->
-    <div class="card" id="scorePanel">
-      <div class="row" style="align-items:center;margin-bottom:12px">
-        <strong class="disp" style="font-size:18px">SET <span id="setNum">1</span></strong>
-        <button class="btn sm gho" id="newSetBtn" style="margin-left:auto">Chiudi set ▸</button>
-      </div>
-      <div class="score">
-        <div class="box us"><div class="t" id="usName">NOI</div><div class="v" id="usScore">0</div>
-          <div class="scbtns" style="flex-direction:row;margin-top:8px"><button class="btn sm pri grow" data-pt="us+">+</button><button class="btn sm gho grow" data-pt="us-">−</button></div>
-        </div>
-        <div class="box"><div class="t" id="oppName">AVV.</div><div class="v" id="oppScore">0</div>
-          <div class="scbtns" style="flex-direction:row;margin-top:8px"><button class="btn sm grow" data-pt="opp+">+</button><button class="btn sm gho grow" data-pt="opp-">−</button></div>
-        </div>
-      </div>
-    </div>
-
     <!-- quick generic points -->
     <div class="card" id="quickPanel">
       <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:10px">Punto rapido · aggiorna il punteggio</div>
@@ -301,11 +333,18 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="out b" data-q="opp|point"><span class="badge">✗</span><span class="lbl">Punto avversario<br><small style="color:var(--mut);font-weight:600">→ +1 AVV.</small></span></button>
       </div>
     </div>
+
+    <!-- step 1: player -->
+    <div class="sec-title">1 · Giocatore</div>
     <div class="card"><div class="pgrid" id="scoutPlayers"></div></div>
 
     <!-- step 2: fundamental -->
     <div class="sec-title">2 · Fondamentale</div>
     <div class="card"><div class="chips" id="fundChips"></div></div>
+
+    <!-- step 2b: set destination (only for alzata) -->
+    <div class="sec-title hidden" id="setCallTitle">Alzata · dove alza</div>
+    <div class="card hidden" id="setCallCard"><div class="chips" id="setCallChips"></div></div>
 
     <!-- step 3: court -->
     <div class="sec-title">3 · Traiettoria <span class="tag" id="courtTag">tocca 2 punti</span></div>
@@ -341,6 +380,12 @@ video{width:100%;border-radius:14px;background:#000;display:block}
   <div class="sec-title">Per giocatore</div>
   <div class="card" style="overflow-x:auto" id="playerStatsBox"></div>
 
+  <div class="sec-title hidden" id="callStatsTitle">Distribuzione alzate</div>
+  <div class="card hidden" id="callStatsBox"></div>
+
+  <div class="sec-title">Per rotazione (P = zona palleggiatore)</div>
+  <div class="card" style="overflow-x:auto" id="rotStatsBox"></div>
+
   <div class="sec-title">Dati</div>
   <div class="card">
     <div class="row">
@@ -372,32 +417,36 @@ video{width:100%;border-radius:14px;background:#000;display:block}
    ========================================================= */
 
 // ---------- volleyball model ----------
+// pt: a chi va il punto se l'azione è terminale ('us' | 'opp' | null = scambio continua)
 const FUNDAMENTALS = {
   battuta:   {label:'Battuta',  short:'B', outcomes:[
-    {k:'#',lbl:'Ace',          cls:'g', w:2},
-    {k:'+',lbl:'Positiva',     cls:'p', w:1},
-    {k:'-',lbl:'In campo',     cls:'n', w:0},
-    {k:'=',lbl:'Errore',       cls:'b', w:-2}]},
+    {k:'#',lbl:'Ace',          cls:'g', w:2,  pt:'us'},
+    {k:'+',lbl:'Positiva',     cls:'p', w:1,  pt:null},
+    {k:'-',lbl:'In campo',     cls:'n', w:0,  pt:null},
+    {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   ricezione: {label:'Ricezione',short:'R', outcomes:[
-    {k:'#',lbl:'Perfetta',     cls:'g', w:2},
-    {k:'+',lbl:'Positiva',     cls:'p', w:1},
-    {k:'-',lbl:'Scarsa',       cls:'n', w:0},
-    {k:'=',lbl:'Errore',       cls:'b', w:-2}]},
+    {k:'#',lbl:'Perfetta',     cls:'g', w:2,  pt:null},
+    {k:'+',lbl:'Positiva',     cls:'p', w:1,  pt:null},
+    {k:'-',lbl:'Scarsa',       cls:'n', w:0,  pt:null},
+    {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   attacco:   {label:'Attacco',  short:'A', outcomes:[
-    {k:'#',lbl:'Punto',        cls:'g', w:2},
-    {k:'-',lbl:'Difeso',       cls:'n', w:0},
-    {k:'/',lbl:'Murato',       cls:'b', w:-1},
-    {k:'=',lbl:'Errore',       cls:'b', w:-2}]},
+    {k:'#',lbl:'Punto',        cls:'g', w:2,  pt:'us'},
+    {k:'+',lbl:'Positivo',     cls:'p', w:1,  pt:null},
+    {k:'-',lbl:'Difeso',       cls:'n', w:0,  pt:null},
+    {k:'/',lbl:'Murato',       cls:'b', w:-1, pt:'opp'},
+    {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   muro:      {label:'Muro',     short:'M', outcomes:[
-    {k:'#',lbl:'Punto',        cls:'g', w:2},
-    {k:'+',lbl:'Tocco utile',  cls:'p', w:1},
-    {k:'=',lbl:'Errore',       cls:'b', w:-2}]},
+    {k:'#',lbl:'Punto',        cls:'g', w:2,  pt:'us'},
+    {k:'+',lbl:'Tocco utile',  cls:'p', w:1,  pt:null},
+    {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   alzata:    {label:'Alzata',   short:'P', outcomes:[
-    {k:'#',lbl:'Perfetta',     cls:'g', w:2},
-    {k:'+',lbl:'Buona',        cls:'p', w:1},
-    {k:'-',lbl:'Scarsa',       cls:'n', w:0},
-    {k:'=',lbl:'Errore',       cls:'b', w:-2}]},
+    {k:'#',lbl:'Perfetta',     cls:'g', w:2,  pt:null},
+    {k:'+',lbl:'Buona',        cls:'p', w:1,  pt:null},
+    {k:'-',lbl:'Scarsa',       cls:'n', w:0,  pt:null},
+    {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
 };
+const SET_CALLS = ['Posto 4','Primo tempo','Sette','Posto 2','Pipe','Seconda linea'];
+
 const FUND_KEYS = Object.keys(FUNDAMENTALS);
 const OUTCOME_COLOR = {g:'#23d3b3',p:'#7bd86b',n:'#ffb43d',b:'#ff4d5e'};
 
@@ -432,7 +481,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const S={teams:[],players:[],matches:[],
   currentTeam:null, currentMatch:null,
   // scout selection
-  selPlayer:null, selFund:'battuta', from:null, to:null, mode:'live', vsrc:'file',
+  selPlayer:null, selFund:'battuta', from:null, to:null, mode:'live', vsrc:'file', setCall:null,
 };
 
 // ---------- helpers ----------
@@ -643,6 +692,14 @@ function renderScout(){
   // fundamentals
   $('#fundChips').innerHTML=FUND_KEYS.map(k=>`<button class="chip ${S.selFund===k?'on':''}" data-f="${k}">${FUNDAMENTALS[k].label}</button>`).join('');
   $$('#fundChips .chip').forEach(c=>c.onclick=()=>{S.selFund=c.dataset.f;renderScout();});
+  // set destination (alzata only)
+  const isAlz=S.selFund==='alzata';
+  $('#setCallTitle').classList.toggle('hidden',!isAlz);
+  $('#setCallCard').classList.toggle('hidden',!isAlz);
+  if(isAlz){
+    $('#setCallChips').innerHTML=SET_CALLS.map(c=>`<button class="chip teal ${S.setCall===c?'on':''}" data-sc="${c}">${c}</button>`).join('');
+    $$('#setCallChips .chip').forEach(b=>b.onclick=()=>{S.setCall=S.setCall===b.dataset.sc?null:b.dataset.sc;renderScout();});
+  }
   // outcomes
   const outs=FUNDAMENTALS[S.selFund].outcomes;
   $('#outcomeGrid').innerHTML=outs.map(o=>`<button class="out ${o.cls}" data-o="${o.k}"><span class="badge">${o.k}</span><span class="lbl">${o.lbl}</span></button>`).join('');
@@ -653,10 +710,26 @@ function renderScout(){
   renderLog();
 }
 
+// ----- rotazione / formazione -----
+function rotZone(startZone,step){return ((startZone-1-(step||0))%6+6)%6+1;} // rotazione oraria
+function curSetterZone(){const m=S.currentMatch;if(!m||!m.setterZone)return null;return rotZone(m.setterZone,m.rotStep);}
+function rotLabelText(){const z=curSetterZone();return z?('P'+z):'—';}
+function curZonePlayers(){
+  const m=S.currentMatch;if(!m||!m.lineup)return null;
+  const out={};for(let z=1;z<=6;z++)out[rotZone(z,m.rotStep)]=m.lineup[z];
+  return out;
+}
+function fixStickyTop(){const t=document.querySelector('.top'),sb=$('#scoreBar');if(t&&sb)sb.style.top=t.offsetHeight+'px';}
+window.addEventListener('resize',fixStickyTop);
+
 function renderScore(){
   const m=S.currentMatch,s=m.sets[m.curSet];
   $('#setNum').textContent=m.curSet+1;
   $('#usScore').textContent=s.us;$('#oppScore').textContent=s.them;
+  const lbl=rotLabelText();
+  $('#rotLabel').textContent=lbl;
+  $('#rotBtn').classList.toggle('set',lbl!=='—');
+  fixStickyTop();
 }
 $$('[data-pt]').forEach(b=>b.onclick=async()=>{
   const m=S.currentMatch,s=m.sets[m.curSet];const[w,sign]=[b.dataset.pt.slice(0,-1),b.dataset.pt.slice(-1)];
@@ -685,10 +758,56 @@ $$('[data-q]').forEach(b=>b.onclick=async()=>{
   if(usPoint)s.us++;else s.them++;
   await put('matches',m);renderScore();
   const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side,gtype,
-    setNum:m.curSet+1,mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
+    setNum:m.curSet+1,rotation:curSetterZone(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
   await put('actions',a);renderLog();
   toast(usPoint?'Punto NOI ✓':'Punto AVV.');
 });
+
+// ----- rotazione & formazione -----
+$('#rotBtn').onclick=async()=>{
+  const m=S.currentMatch;if(!m)return;
+  if(!m.setterZone)return lineupSheet();
+  m.rotStep=((m.rotStep||0)+1)%6;
+  await put('matches',m);renderScore();toast('Rotazione '+rotLabelText());
+};
+$('#setNumBtn').onclick=async()=>{
+  const m=S.currentMatch;if(!m||m.sets.length<2)return;
+  m.curSet=(m.curSet+1)%m.sets.length;await put('matches',m);renderScore();toast('Set '+(m.curSet+1));
+};
+$('#lineupBtn').onclick=()=>lineupSheet();
+
+function lineupSheet(){
+  const m=S.currentMatch;if(!m)return toast('Nessuna partita attiva');
+  const pls=teamPlayers();
+  if(pls.length<6)return toast('Servono almeno 6 giocatori in rosa');
+  const opt=sel=>`<option value="">—</option>`+pls.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>#${p.number} ${esc(p.name)}</option>`).join('');
+  const lu=m.lineup||{};
+  const cell=z=>`<div class="lucell ${[4,3,2].includes(z)?'net':''}"><div class="z">Zona ${z}${[4,3,2].includes(z)?' · rete':''}</div><select data-z="${z}">${opt(lu[z])}</select></div>`;
+  modal(`<h2 style="margin:0 0 4px;font-size:22px">Formazione di partenza</h2>
+    <p style="color:var(--mut);margin:0 0 14px;font-size:13px">Assegna i 6 titolari alle zone (fila in alto = sotto rete). La rotazione viene etichettata con la zona del palleggiatore (P1–P6).</p>
+    <div class="lugrid">${[4,3,2].map(cell).join('')}</div>
+    <div class="lugrid" style="margin-top:8px">${[5,6,1].map(cell).join('')}</div>
+    <label class="fld" style="margin-top:14px">Palleggiatore</label>
+    <select class="inp" id="luSetter">${opt(m.setterId)}</select>
+    <label class="fld" style="margin-top:12px">Libero (opzionale)</label>
+    <select class="inp" id="luLibero">${opt(m.libero)}</select>
+    <button class="btn pri full" id="luSave" style="margin-top:16px">Salva formazione</button>
+    ${m.setterZone?'<button class="btn gho full" id="luReset" style="margin-top:8px">↺ Azzera rotazione (torna a P'+m.setterZone+')</button>':''}`);
+  $('#luSave').onclick=async()=>{
+    const lineup={};$$('[data-z]').forEach(s=>{lineup[+s.dataset.z]=s.value||null;});
+    const filled=Object.values(lineup).filter(Boolean);
+    if(filled.length<6)return toast('Assegna tutte e 6 le zone');
+    if(new Set(filled).size<6)return toast('Stesso giocatore in più zone');
+    const setterId=$('#luSetter').value||null;
+    if(!setterId)return toast('Indica il palleggiatore');
+    const setterZone=+Object.keys(lineup).find(z=>lineup[z]===setterId);
+    if(!setterZone)return toast('Il palleggiatore deve essere tra i 6 titolari');
+    m.lineup=lineup;m.setterId=setterId;m.setterZone=setterZone;m.libero=$('#luLibero').value||null;
+    if(m.rotStep==null)m.rotStep=0;
+    await put('matches',m);closeModal();renderScore();toast('Formazione salvata · '+rotLabelText());
+  };
+  const lr=$('#luReset');if(lr)lr.onclick=async()=>{m.rotStep=0;await put('matches',m);closeModal();renderScore();toast('Rotazione azzerata');};
+}
 
 // ----- mode toggle -----
 $$('#modeSeg button').forEach(b=>b.onclick=()=>{
@@ -762,20 +881,29 @@ async function recordAction(outcomeKey){
   if(!S.selPlayer)return toast('Seleziona un giocatore');
   if(!S.from||!S.to)return toast('Disegna la traiettoria sul campo');
   const videoTime=currentVideoTime();
+  const oc=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===outcomeKey);
   const a={
     id:uid(), matchId:S.currentMatch.id, teamId:S.currentTeam.id,
     playerId:S.selPlayer, fund:S.selFund, outcome:outcomeKey,
     from:S.from, to:S.to, fromZone:zoneOf(S.from), toZone:zoneOf(S.to),
+    setCall:S.selFund==='alzata'?(S.setCall||null):null,
+    rotation:curSetterZone(),
     setNum:S.currentMatch.curSet+1, mode:S.mode, videoTime,
     ts:Date.now()
   };
   await put('actions',a);
+  // auto-punteggio: solo se l'esito è terminale (punto o errore)
+  if(oc&&oc.pt){
+    const m=S.currentMatch,s=m.sets[m.curSet];
+    if(oc.pt==='us')s.us++;else s.them++;
+    await put('matches',m);renderScore();
+  }
   // reset trajectory, keep player+fund for fast repeat
   S.from=null;S.to=null;
   $('#courtHint').textContent='Tocca il punto di partenza dell\'azione';
   drawCourt();renderLog();
-  const o=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===outcomeKey);
-  toast(`${FUNDAMENTALS[S.selFund].label}: ${o.lbl} ✓`);
+  const ptTxt=oc&&oc.pt?(oc.pt==='us'?' · +1 NOI':' · +1 AVV'):'';
+  toast(`${FUNDAMENTALS[S.selFund].label}: ${oc.lbl}${ptTxt} ✓`);
 }
 
 async function renderLog(){
@@ -788,16 +916,19 @@ async function renderLog(){
       const usPoint=(a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error');
       const col=usPoint?'var(--good)':'var(--bad)';
       const lbl={'us|point':'Punto nostro','opp|error':'Errore avversario','us|error':'Errore/fallo nostro','opp|point':'Punto avversario'}[a.side+'|'+a.gtype]||'Azione';
+      const rot=a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'';
       return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-        <b style="color:${col}">${usPoint?'+1 NOI':'+1 AVV'}</b> ${lbl}
+        <b style="color:${col}">${usPoint?'+1 NOI':'+1 AVV'}</b> ${lbl}${rot}
         <span class="meta">${t}${delBtn}</span></div>`;
     }
     const p=S.players.find(x=>x.id===a.playerId);
     const fund=FUNDAMENTALS[a.fund];
     const o=fund?fund.outcomes.find(x=>x.k===a.outcome):null;
     const col=OUTCOME_COLOR[o?.cls]||'#888';
+    const rot=a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'';
+    const sc=a.setCall?` <span style="color:var(--teal);font-size:10px">${esc(a.setCall)}</span>`:'';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>
+      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${sc}${rot}
       <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>
       <span class="meta">${t}${delBtn}</span></div>`;
   }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
@@ -894,8 +1025,13 @@ function renderStats(){
   sel.onchange=computeStats;
   computeStats();
 }
+// a chi è andato il punto per questa azione: 'us' | 'opp' | null
+function actionPoint(a){
+  if(a.generic)return ((a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error'))?'us':'opp';
+  const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return o?o.pt:null;
+}
 async function computeStats(){
-  if(!S.currentTeam){$('#teamKpis').innerHTML='';$('#playerStatsBox').innerHTML='<div class="empty">Nessuna squadra</div>';return;}
+  if(!S.currentTeam){$('#teamKpis').innerHTML='';$('#playerStatsBox').innerHTML='<div class="empty">Nessuna squadra</div>';$('#rotStatsBox').innerHTML='';$('#callStatsBox').innerHTML='';return;}
   const matchId=$('#statMatch').value;
   let acts=[];
   if(matchId==='all'){
@@ -922,6 +1058,39 @@ async function computeStats(){
     <div class="kpi"><div class="v" style="color:var(--good)">${tot?Math.round(pos/tot*100):0}%</div><div class="l">Positività</div></div>
     <div class="kpi"><div class="v" style="color:${eff>=0?'var(--acc2)':'var(--bad)'}">${eff>0?'+':''}${eff}%</div><div class="l">Efficienza</div></div>${extra}`;
 
+  // ---- per rotazione (tutte le azioni con rotazione, indipendente dal filtro fondamentale) ----
+  const rotRows=[];
+  for(let z=1;z<=6;z++){
+    const ra=acts.filter(a=>a.rotation===z);
+    if(!ra.length)continue;
+    const won=ra.filter(a=>actionPoint(a)==='us').length;
+    const lost=ra.filter(a=>actionPoint(a)==='opp').length;
+    const sk=ra.filter(a=>!a.generic);
+    const ef=sk.length?Math.round(sk.reduce((s,a)=>{const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/sk.length*50):0;
+    rotRows.push({z,n:ra.length,won,lost,diff:won-lost,ef,hasSkill:sk.length>0});
+  }
+  $('#rotStatsBox').innerHTML=rotRows.length?
+    `<table><thead><tr><th class="pl">Rot.</th><th>Azioni</th><th>Punti</th><th>Subiti</th><th>Saldo</th><th>Eff%</th></tr></thead><tbody>${rotRows.map(r=>`
+      <tr><td class="pl" style="color:var(--blue)">P${r.z}</td><td>${r.n}</td><td style="color:var(--good)">${r.won}</td><td style="color:var(--bad)">${r.lost}</td>
+      <td style="font-weight:800;color:${r.diff>=0?'var(--good)':'var(--bad)'}">${r.diff>0?'+':''}${r.diff}</td>
+      <td style="color:${r.ef>=0?'var(--acc2)':'var(--bad)'}">${r.hasSkill?(r.ef>0?'+':'')+r.ef:'—'}</td></tr>`).join('')}</tbody></table>`
+    :'<div class="empty" style="padding:20px">Imposta la <b>Formazione</b> nello Scout e tagga qualche azione per vedere il rendimento per rotazione.</div>';
+
+  // ---- distribuzione alzate (solo se filtro = alzata) ----
+  const showCall=statFund==='alzata';
+  $('#callStatsTitle').classList.toggle('hidden',!showCall);
+  $('#callStatsBox').classList.toggle('hidden',!showCall);
+  if(showCall){
+    const al=skill.filter(a=>a.setCall);
+    const maxN=Math.max(1,...SET_CALLS.map(c=>al.filter(a=>a.setCall===c).length));
+    $('#callStatsBox').innerHTML=al.length?SET_CALLS.map(c=>{
+      const ca=al.filter(a=>a.setCall===c);if(!ca.length)return'';
+      const posPct=Math.round(ca.filter(a=>['#','+'].includes(a.outcome)).length/ca.length*100);
+      return `<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>${esc(c)}</b><span style="color:var(--mut)">${ca.length} · ${posPct}% pos.</span></div>
+        <div class="statbar"><i style="width:${Math.round(ca.length/maxN*100)}%;background:var(--teal)"></i></div></div>`;
+    }).join(''):'<div class="empty" style="padding:16px">Nessuna alzata con destinazione registrata</div>';
+  }
+
   // per player
   const pls=teamPlayers();
   if(!tot){$('#playerStatsBox').innerHTML='<div class="empty"><div class="big">📊</div>Nessuna azione tecnica per questo filtro</div>';return;}
@@ -929,7 +1098,7 @@ async function computeStats(){
     const pa=skill.filter(a=>a.playerId===p.id);
     if(!pa.length)return null;
     const t=pa.length;
-    const pP=pa.filter(a=>a.outcome==='#').length;
+    const pP=pa.filter(a=>actionPoint(a)==='us').length;
     const pE=pa.filter(a=>a.outcome==='=').length;
     const pPos=pa.filter(a=>['#','+'].includes(a.outcome)).length;
     const ef=Math.round(pa.reduce((s,a)=>{const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/t*50);
@@ -950,15 +1119,16 @@ $('#exportJson').onclick=async()=>{
 $('#exportCsv').onclick=async()=>{
   let acts=await getAll('actions');
   acts=acts.filter(a=>a.teamId===S.currentTeam?.id);
-  const head=['data','avversario','set','giocatore','numero','fondamentale','esito','zona_partenza','zona_arrivo','modalità','videoTime'];
+  const head=['data','avversario','set','rotazione','giocatore','numero','fondamentale','esito','alzata_dove','zona_partenza','zona_arrivo','modalità','videoTime'];
   const lines=[head.join(',')];
   for(const a of acts){
     const p=S.players.find(x=>x.id===a.playerId),m=S.matches.find(x=>x.id===a.matchId);
+    const rot=a.rotation?('P'+a.rotation):'';
     if(a.generic){
       const lbl={'us|point':'punto nostro','opp|error':'errore avversario','us|error':'errore/fallo nostro','opp|point':'punto avversario'}[a.side+'|'+a.gtype]||'generico';
-      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,'','','generico',`"${lbl}"`,'','',a.mode,a.videoTime??''].join(','));
+      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,rot,'','','generico',`"${lbl}"`,'','','',a.mode,a.videoTime??''].join(','));
     }else{
-      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,`"${p?.name||''}"`,p?.number||'',a.fund,a.outcome,a.fromZone||'',a.toZone||'',a.mode,a.videoTime??''].join(','));
+      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,rot,`"${p?.name||''}"`,p?.number||'',a.fund,a.outcome,`"${a.setCall||''}"`,a.fromZone||'',a.toZone||'',a.mode,a.videoTime??''].join(','));
     }
   }
   download(lines.join('\n'),'vbscout-'+(S.currentTeam?.name||'export')+'.csv','text/csv');
