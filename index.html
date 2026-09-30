@@ -195,6 +195,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:80;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.upd-banner{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:85;background:var(--blue);color:#051a30;font-weight:800;font-size:13px;padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:calc(100% - 32px)}
 
 /* ---------- modal ---------- */
 .modal{position:fixed;inset:0;z-index:90;background:rgba(6,8,11,.7);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;padding:0}
@@ -489,6 +490,8 @@ const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1600);}
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// B8: data YYYY-MM-DD nel fuso orario locale (toISOString usa UTC)
+function localISODate(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function fmtTime(s){if(isNaN(s))return'0:00';const m=Math.floor(s/60),x=Math.floor(s%60);return m+':'+String(x).padStart(2,'0');}
 
 // =========================================================
@@ -593,7 +596,11 @@ function renderMatchView(){
       <span style="color:var(--mut);font-size:12px">${esc(t.cat||'')}</span>
       <button class="iconbtn" style="margin-left:auto" data-editteam="${t.id}">✎</button>
     </div></div>`).join(''):'<div class="empty" style="padding:18px">Crea la tua prima squadra ▾</div>';
-  $$('[data-team]').forEach(r=>r.onchange=async()=>{S.currentTeam=S.teams.find(t=>t.id===r.dataset.team);S.currentMatch=null;await saveState();renderMatchView();renderCtx();});
+  $$('[data-team]').forEach(r=>r.onchange=async()=>{
+    S.currentTeam=S.teams.find(t=>t.id===r.dataset.team);S.currentMatch=null;
+    S.selPlayer=null;S.from=null;S.to=null;S.setCall=null; // B16: niente selezioni della squadra precedente
+    await saveState();renderMatchView();renderCtx();
+  });
   $$('[data-editteam]').forEach(b=>b.onclick=()=>teamSheet(S.teams.find(t=>t.id===b.dataset.editteam)));
   // new match button under current team
   if(S.currentMatch){
@@ -616,7 +623,7 @@ function matchSheet(m){
   modal(`<h2 style="margin:0 0 14px;font-size:22px">${ed?'Modifica':'Nuova'} partita</h2>
     <label class="fld">Avversario</label><input class="inp" id="mOpp" value="${esc(m?.opponent||'')}" placeholder="Nome squadra avversaria">
     <div class="row" style="margin-top:12px">
-      <div class="grow"><label class="fld">Data</label><input class="inp" id="mDate" type="date" value="${m?.date||new Date().toISOString().slice(0,10)}"></div>
+      <div class="grow"><label class="fld">Data</label><input class="inp" id="mDate" type="date" value="${m?.date||localISODate()}"></div>
     </div>
     <label class="fld" style="margin-top:12px">Campo</label>
     <div class="seg" id="haSeg"><button data-ha="home" class="${!m||m.homeAway==='home'?'on':''}">In casa</button><button data-ha="away" class="${m?.homeAway==='away'?'on':''}">Trasferta</button></div>
@@ -734,9 +741,29 @@ function renderScore(){
 $$('[data-pt]').forEach(b=>b.onclick=async()=>{
   const m=S.currentMatch,s=m.sets[m.curSet];const[w,sign]=[b.dataset.pt.slice(0,-1),b.dataset.pt.slice(-1)];
   const d=sign==='+'?1:-1;
-  if(w==='us')s.us=Math.max(0,s.us+d);else s.them=Math.max(0,s.them+d);
+  const key=w==='us'?'us':'them';
+  if(s[key]+d<0)return; // niente da correggere sotto lo zero
+  s[key]+=d;
   await put('matches',m);renderScore();
+  // B5: registra la correzione manuale come azione, così log e statistiche restano coerenti
+  const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side:w,gtype:'correction',delta:d,
+    setNum:m.curSet+1,rotation:curSetterZone(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
+  await put('actions',a);renderLog();
 });
+
+// ----- helper punteggio (condivisi da log, delete e statistiche) -----
+function isUsGenericPoint(a){return (a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error');}
+// variazione di punteggio {us,them} prodotta da un'azione
+function actionScoreDelta(a){
+  if(a.generic&&a.gtype==='correction')return a.side==='us'?{us:a.delta||0,them:0}:{us:0,them:a.delta||0};
+  const pt=actionPoint(a);
+  return {us:pt==='us'?1:0,them:pt==='opp'?1:0};
+}
+const GENERIC_LABELS={'us|point':'Punto nostro','opp|error':'Errore avversario','us|error':'Errore/fallo nostro','opp|point':'Punto avversario'};
+function genericLabel(a){
+  if(a.gtype==='correction')return 'Correzione manuale '+(a.side==='us'?'NOI':'AVV.')+' '+(a.delta>0?'+1':'−1');
+  return GENERIC_LABELS[a.side+'|'+a.gtype]||'Azione';
+}
 $('#newSetBtn').onclick=async()=>{
   const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;
   await put('matches',m);renderScore();toast('Nuovo set '+(m.curSet+1));
@@ -830,8 +857,12 @@ function initCourt(){
 }
 $('#resetCourt').onclick=()=>{S.from=null;S.to=null;$('#courtHint').textContent='Tocca il punto di partenza dell\'azione';drawCourt();};
 // court drawing: vertical court, net in middle. our half = bottom.
+// Geometria condivisa tra disegno e calcolo zone (B4): canvas W×H, margine esterno M (zona "fuori")
+const COURT={W:270,H:480,M:18};
+COURT.line3Top=COURT.M+(COURT.H/2-COURT.M)*(2/3);      // linea 3 m avversaria (px)
+COURT.line3Bot=COURT.H/2+(COURT.H/2-COURT.M)*(1/3);    // linea 3 m nostra (px)
 function drawCourt(){
-  const ctx=courtCtx,W=270,H=480;ctx.clearRect(0,0,W,H);
+  const ctx=courtCtx,W=COURT.W,H=COURT.H;ctx.clearRect(0,0,W,H);
   // sand/court base
   ctx.fillStyle='#1b5e2a';ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#c9762e';ctx.fillRect(18,18,W-36,H-36); // playing area
@@ -842,7 +873,7 @@ function drawCourt(){
   ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(18,H/2);ctx.lineTo(W-18,H/2);ctx.stroke();
   ctx.setLineDash([4,4]);ctx.lineWidth=1.4;ctx.strokeStyle='rgba(255,255,255,.7)';
   // 3m attack lines
-  const top3=18+(H/2-18)*(2/3), bot3=H/2+(H/2-18)*(1/3);
+  const top3=COURT.line3Top, bot3=COURT.line3Bot;
   ctx.beginPath();ctx.moveTo(18,top3);ctx.lineTo(W-18,top3);ctx.stroke();
   ctx.beginPath();ctx.moveTo(18,bot3);ctx.lineTo(W-18,bot3);ctx.stroke();
   ctx.setLineDash([]);
@@ -866,11 +897,15 @@ function drawCourt(){
 function zoneOf(p){
   if(!p)return null;
   const half=p.y<0.5?'AVV':'NOI';
-  const col=Math.min(2,Math.floor(p.x*3)); // 0 left,1 center,2 right
-  // front row near net
-  let front;
-  if(half==='NOI')front=p.y<0.75; else front=p.y>0.25;
-  // zones: front-> 4,3,2 ; back-> 5,6,1 (from our viewpoint, mirrored for opp)
+  // colonna calcolata sull'area di gioco (esclusi i margini), 0 = sinistra, 2 = destra di chi guarda
+  const xin=(p.x*COURT.W-COURT.M)/(COURT.W-2*COURT.M);
+  let col=Math.max(0,Math.min(2,Math.floor(xin*3)));
+  // B3: l'avversario guarda verso di noi → la sua sinistra è la nostra destra: colonne specchiate
+  if(half==='AVV')col=2-col;
+  // B4: prima linea = tra rete e linea dei 3 m, con le stesse proporzioni usate in drawCourt
+  const y=p.y*COURT.H;
+  const front=half==='NOI'?y<COURT.line3Bot:y>COURT.line3Top;
+  // zone: prima linea 4,3,2 ; seconda linea 5,6,1 (dal punto di vista di ogni squadra)
   const frontZ=[4,3,2], backZ=[5,6,1];
   const z=front?frontZ[col]:backZ[col];
   return half+' Z'+z;
@@ -913,12 +948,17 @@ async function renderLog(){
     const t=a.mode==='video'&&a.videoTime!=null?fmtTime(a.videoTime):'Set '+a.setNum;
     const delBtn=`<button class="iconbtn sm" data-da="${a.id}" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button>`;
     if(a.generic){
-      const usPoint=(a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error');
-      const col=usPoint?'var(--good)':'var(--bad)';
-      const lbl={'us|point':'Punto nostro','opp|error':'Errore avversario','us|error':'Errore/fallo nostro','opp|point':'Punto avversario'}[a.side+'|'+a.gtype]||'Azione';
       const rot=a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'';
+      if(a.gtype==='correction'){
+        const sc=(a.delta>0?'+1 ':'−1 ')+(a.side==='us'?'NOI':'AVV');
+        return `<div class="logrow"><span class="dot" style="background:var(--mut)"></span>
+          <b style="color:var(--mut)">${sc}</b> Correzione manuale${rot}
+          <span class="meta">${t}${delBtn}</span></div>`;
+      }
+      const usPoint=isUsGenericPoint(a);
+      const col=usPoint?'var(--good)':'var(--bad)';
       return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-        <b style="color:${col}">${usPoint?'+1 NOI':'+1 AVV'}</b> ${lbl}${rot}
+        <b style="color:${col}">${usPoint?'+1 NOI':'+1 AVV'}</b> ${genericLabel(a)}${rot}
         <span class="meta">${t}${delBtn}</span></div>`;
     }
     const p=S.players.find(x=>x.id===a.playerId);
@@ -932,7 +972,20 @@ async function renderLog(){
       <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>
       <span class="meta">${t}${delBtn}</span></div>`;
   }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
-  $$('[data-da]').forEach(b=>b.onclick=async()=>{await del('actions',b.dataset.da);renderLog();});
+  $$('[data-da]').forEach(b=>b.onclick=async()=>{
+    const a=acts.find(x=>x.id===b.dataset.da);
+    await del('actions',b.dataset.da);
+    // B1: annulla l'effetto dell'azione sul punteggio del suo set
+    const m=S.currentMatch,s=a&&m.sets[a.setNum-1];
+    if(s){
+      const d=actionScoreDelta(a);
+      if(d.us||d.them){
+        s.us=Math.max(0,s.us-d.us);s.them=Math.max(0,s.them-d.them);
+        await put('matches',m);renderScore();
+      }
+    }
+    renderLog();
+  });
 }
 
 // ----- video -----
@@ -1021,13 +1074,20 @@ function renderStats(){
   sel.innerHTML='<option value="all">Tutte le partite (squadra)</option>'+ms.map(m=>`<option value="${m.id}">vs ${esc(m.opponent)} · ${esc(m.date)}</option>`).join('');
   // fund chips
   $('#statFundChips').innerHTML=`<button class="chip teal ${statFund==='all'?'on':''}" data-sf="all">Tutti</button>`+FUND_KEYS.map(k=>`<button class="chip teal ${statFund===k?'on':''}" data-sf="${k}">${FUNDAMENTALS[k].label}</button>`).join('');
-  $$('#statFundChips .chip').forEach(c=>c.onclick=()=>{statFund=c.dataset.sf;computeStats();});
+  $$('#statFundChips .chip').forEach(c=>c.onclick=()=>{
+    statFund=c.dataset.sf;
+    // B2: evidenzia il chip attivo
+    $$('#statFundChips .chip').forEach(x=>x.classList.toggle('on',x===c));
+    computeStats();
+  });
   sel.onchange=computeStats;
   computeStats();
 }
 // a chi è andato il punto per questa azione: 'us' | 'opp' | null
 function actionPoint(a){
-  if(a.generic)return ((a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error'))?'us':'opp';
+  // correzione manuale: conta come punto solo se aggiunge (+1); un −1 annulla, non assegna
+  if(a.generic&&a.gtype==='correction')return a.delta>0?a.side:null;
+  if(a.generic)return isUsGenericPoint(a)?'us':'opp';
   const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return o?o.pt:null;
 }
 async function computeStats(){
@@ -1041,7 +1101,8 @@ async function computeStats(){
   // separa azioni tecniche (per giocatore/fondamentale) da quelle generiche (punto rapido)
   let skill=acts.filter(a=>!a.generic);
   if(statFund!=='all')skill=skill.filter(a=>a.fund===statFund);
-  const generics=acts.filter(a=>a.generic);
+  const generics=acts.filter(a=>a.generic&&a.gtype!=='correction');
+  const corrections=acts.filter(a=>a.generic&&a.gtype==='correction');
 
   // team KPIs (solo azioni tecniche)
   const tot=skill.length;
@@ -1049,9 +1110,14 @@ async function computeStats(){
   const eff=tot?Math.round(skill.reduce((s,a)=>{const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/tot*50):0;
   let extra='';
   if(statFund==='all'&&generics.length){
-    const won=generics.filter(a=>(a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error')).length;
+    const won=generics.filter(isUsGenericPoint).length;
     const lost=generics.length-won;
     extra=`<div class="kpi" style="grid-column:1/-1"><div class="v" style="font-size:22px"><span style="color:var(--good)">+${won}</span> <span style="color:var(--mut)">/</span> <span style="color:var(--bad)">−${lost}</span></div><div class="l">Punti rapidi (generici) · a favore / contro</div></div>`;
+  }
+  if(statFund==='all'&&corrections.length){
+    const net=side=>corrections.filter(a=>a.side===side).reduce((s,a)=>s+(a.delta||0),0);
+    const fmt=n=>(n>0?'+':n<0?'−':'')+Math.abs(n);
+    extra+=`<div class="kpi" style="grid-column:1/-1"><div class="v" style="font-size:22px">NOI ${fmt(net('us'))} <span style="color:var(--mut)">·</span> AVV ${fmt(net('opp'))}</div><div class="l">Correzioni manuali del punteggio (${corrections.length}) · saldo netto</div></div>`;
   }
   $('#teamKpis').innerHTML=`
     <div class="kpi"><div class="v">${tot}</div><div class="l">Azioni tecniche</div></div>
@@ -1114,24 +1180,30 @@ async function computeStats(){
 $('#exportJson').onclick=async()=>{
   const data={app:'vbscout',version:1,exportedAt:new Date().toISOString(),
     teams:await getAll('teams'),players:await getAll('players'),matches:await getAll('matches'),actions:await getAll('actions')};
-  download(JSON.stringify(data,null,2),'vbscout-backup-'+new Date().toISOString().slice(0,10)+'.json','application/json');
+  download(JSON.stringify(data,null,2),'vbscout-backup-'+localISODate()+'.json','application/json');
 };
 $('#exportCsv').onclick=async()=>{
   let acts=await getAll('actions');
   acts=acts.filter(a=>a.teamId===S.currentTeam?.id);
   const head=['data','avversario','set','rotazione','giocatore','numero','fondamentale','esito','alzata_dove','zona_partenza','zona_arrivo','modalità','videoTime'];
-  const lines=[head.join(',')];
+  // B12: separatore ';' (Excel IT), ogni campo tra virgolette con "" per le virgolette interne
+  const csvRow=cols=>cols.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';');
+  const lines=[csvRow(head)];
+  acts.sort((a,b)=>a.ts-b.ts);
   for(const a of acts){
     const p=S.players.find(x=>x.id===a.playerId),m=S.matches.find(x=>x.id===a.matchId);
     const rot=a.rotation?('P'+a.rotation):'';
+    const vt=a.videoTime==null?'':String(a.videoTime).replace('.',',');
     if(a.generic){
-      const lbl={'us|point':'punto nostro','opp|error':'errore avversario','us|error':'errore/fallo nostro','opp|point':'punto avversario'}[a.side+'|'+a.gtype]||'generico';
-      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,rot,'','','generico',`"${lbl}"`,'','','',a.mode,a.videoTime??''].join(','));
+      const lbl=genericLabel(a).toLowerCase();
+      lines.push(csvRow([m?.date,m?.opponent,a.setNum,rot,'','',a.gtype==='correction'?'correzione':'generico',lbl,'','','',a.mode,vt]));
     }else{
-      lines.push([m?.date||'',`"${m?.opponent||''}"`,a.setNum,rot,`"${p?.name||''}"`,p?.number||'',a.fund,a.outcome,`"${a.setCall||''}"`,a.fromZone||'',a.toZone||'',a.mode,a.videoTime??''].join(','));
+      lines.push(csvRow([m?.date,m?.opponent,a.setNum,rot,p?.name,p?.number,a.fund,a.outcome,a.setCall,a.fromZone,a.toZone,a.mode,vt]));
     }
   }
-  download(lines.join('\n'),'vbscout-'+(S.currentTeam?.name||'export')+'.csv','text/csv');
+  // BOM UTF-8 per gli accenti in Excel; nome file senza caratteri non validi
+  const fname=(S.currentTeam?.name||'export').replace(/[\\/:*?"<>|]+/g,'_');
+  download('\uFEFF'+lines.join('\r\n'),'vbscout-'+fname+'.csv','text/csv;charset=utf-8');
 };
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=e=>{
@@ -1171,9 +1243,17 @@ if('serviceWorker' in navigator){
         });
       });
     }).catch(()=>{});
-    let reloaded=false;
+    // B6: nessun reload automatico (rischio di perdere video/selezioni a metà partita).
+    // Si mostra un banner non bloccante e si ricarica solo su tap dell'utente.
+    // Al primo avvio (nessun controller precedente) non c'è nulla da aggiornare.
+    const hadController=!!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      if(reloaded)return;reloaded=true;window.location.reload();
+      if(!hadController||$('#updBanner'))return;
+      const b=document.createElement('button');
+      b.id='updBanner';b.className='upd-banner';b.type='button';
+      b.textContent='⟳ Nuova versione disponibile — tocca per aggiornare';
+      b.onclick=()=>window.location.reload();
+      document.body.appendChild(b);
     });
   });
 }
