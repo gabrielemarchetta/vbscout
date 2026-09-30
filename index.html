@@ -195,6 +195,21 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:80;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ---------- mappa (O6) ---------- */
+.mapgrid{display:grid;grid-template-columns:1fr;gap:0 14px}
+@media (min-width:640px){.mapgrid{grid-template-columns:1fr 1fr}}
+.mapcard{padding:12px}
+.maphead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;font-size:13px}
+.mapwrap{position:relative;width:100%;max-width:340px;margin:0 auto;aspect-ratio:9/16}
+.mapwrap canvas{width:100%;height:100%;display:block;border-radius:12px}
+.maplegend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--mut);padding:12px 14px}
+.maplegend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+/* ---------- video interattivo (O7) ---------- */
+.vlink{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:7px;background:rgba(255,106,43,.14);border:1px solid rgba(255,106,43,.4);color:var(--acc);font-weight:800;font-size:11px;font-variant-numeric:tabular-nums}
+.vlink:active{transform:scale(.95)}
+.logrow.hl{box-shadow:0 0 0 2px var(--acc) inset;background:linear-gradient(90deg,rgba(255,106,43,.18),var(--card2))}
+.clipbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px;border-radius:12px;background:rgba(255,106,43,.1);border:1px solid rgba(255,106,43,.35);font-size:13px}
+.clipbar #clipInfo{text-align:center;line-height:1.25}
 .upd-banner{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:85;background:var(--blue);color:#051a30;font-weight:800;font-size:13px;padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:calc(100% - 32px)}
 
 /* ---------- modal ---------- */
@@ -307,6 +322,14 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         </div>
       </div>
 
+      <!-- playlist clip (O7): attiva quando si apre una sequenza di azioni dalle Statistiche -->
+      <div id="clipBar" class="clipbar hidden">
+        <button class="iconbtn" id="clipPrev" aria-label="Clip precedente">⏮</button>
+        <div class="grow" id="clipInfo"></div>
+        <button class="iconbtn" id="clipNext" aria-label="Clip successiva">⏭</button>
+        <button class="iconbtn" id="clipClose" aria-label="Chiudi playlist">✕</button>
+      </div>
+
       <!-- source: youtube -->
       <div id="vsrcYt" class="hidden">
         <div class="row">
@@ -367,6 +390,39 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
 <!-- ============ STATS VIEW ============ -->
 <section class="view hidden" id="v-stats">
+  <div class="seg" id="statTabSeg" style="margin:4px 0 2px">
+    <button data-st="num" class="on">📊 Numeri</button>
+    <button data-st="map">🗺️ Mappa</button>
+  </div>
+
+  <!-- ============ TAB MAPPA (O6) ============ -->
+  <div id="statTabMap" class="hidden">
+    <div class="sec-title">Filtri mappa</div>
+    <div class="card">
+      <div class="row">
+        <div class="grow" style="min-width:140px"><label class="fld">Partita</label><select class="inp" id="mapMatch"></select></div>
+        <div class="grow" style="min-width:140px"><label class="fld">Giocatore</label><select class="inp" id="mapPlayer"></select></div>
+      </div>
+      <label class="fld" style="margin-top:12px">Fondamentale (mappa traiettorie)</label>
+      <div class="chips" id="mapFundChips"></div>
+    </div>
+    <div class="mapgrid">
+      <div class="card mapcard">
+        <div class="maphead"><b>Ricezione · dove cade la battuta</b><span class="tag" id="mapRecCount">0 azioni</span></div>
+        <div class="mapwrap"><canvas id="mapRec" aria-label="Mappa di densità delle ricezioni"></canvas></div>
+      </div>
+      <div class="card mapcard">
+        <div class="maphead"><b id="mapTrajTitle">Traiettorie · Attacco</b><span class="tag" id="mapTrajCount">0 azioni</span></div>
+        <div class="mapwrap"><canvas id="mapTraj" aria-label="Mappa delle traiettorie"></canvas></div>
+      </div>
+    </div>
+    <div class="card maplegend" id="mapLegend"></div>
+    <div class="sec-title">Azioni con video <span class="tag" id="mapVidCount">0</span></div>
+    <div id="mapVidList"></div>
+  </div>
+
+  <!-- ============ TAB NUMERI ============ -->
+  <div id="statTabNum">
   <div class="sec-title">Filtra</div>
   <div class="card">
     <label class="fld">Partita</label>
@@ -396,6 +452,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <button class="btn gho full" id="importBtn" style="margin-top:10px">⬆ Ripristina da backup</button>
     <input type="file" id="importFile" accept="application/json" class="hidden">
   </div>
+  </div><!-- /statTabNum -->
 </section>
 
 </div>
@@ -862,7 +919,25 @@ const COURT={W:270,H:480,M:18};
 COURT.line3Top=COURT.M+(COURT.H/2-COURT.M)*(2/3);      // linea 3 m avversaria (px)
 COURT.line3Bot=COURT.H/2+(COURT.H/2-COURT.M)*(1/3);    // linea 3 m nostra (px)
 function drawCourt(){
-  const ctx=courtCtx,W=COURT.W,H=COURT.H;ctx.clearRect(0,0,W,H);
+  const ctx=courtCtx,W=COURT.W,H=COURT.H;
+  drawCourtBase(ctx);
+  // points
+  const dot=(p,col)=>{const X=p.x*W,Y=p.y*H;ctx.fillStyle=col;ctx.beginPath();ctx.arc(X,Y,7,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();};
+  if(S.from&&S.to)drawArrow(ctx,S.from,S.to,'#ffd23f',3,10);
+  if(S.from)dot(S.from,'#23d3b3');
+  if(S.to)dot(S.to,'#ff6a2b');
+}
+// freccia in coordinate normalizzate (0..1) sul campo COURT.W×COURT.H
+function drawArrow(ctx,a,b,col,lw,head){
+  const W=COURT.W,H=COURT.H;
+  ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=lw;ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(a.x*W,a.y*H);ctx.lineTo(b.x*W,b.y*H);ctx.stroke();
+  const ang=Math.atan2((b.y-a.y)*H,(b.x-a.x)*W),ax=b.x*W,ay=b.y*H;
+  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-head*Math.cos(ang-.4),ay-head*Math.sin(ang-.4));ctx.lineTo(ax-head*Math.cos(ang+.4),ay-head*Math.sin(ang+.4));ctx.closePath();ctx.fill();
+}
+// campo di base (condiviso da scout e mappe O6)
+function drawCourtBase(ctx){
+  const W=COURT.W,H=COURT.H;ctx.clearRect(0,0,W,H);
   // sand/court base
   ctx.fillStyle='#1b5e2a';ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#c9762e';ctx.fillRect(18,18,W-36,H-36); // playing area
@@ -880,18 +955,6 @@ function drawCourt(){
   // labels
   ctx.fillStyle='rgba(255,255,255,.55)';ctx.font='bold 11px Manrope';ctx.textAlign='center';
   ctx.fillText('AVVERSARIO',W/2,38);ctx.fillText('NOI',W/2,H-26);
-  // points
-  const dot=(p,col)=>{const X=p.x*W,Y=p.y*H;ctx.fillStyle=col;ctx.beginPath();ctx.arc(X,Y,7,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();};
-  if(S.from&&S.to){
-    ctx.strokeStyle='#ffd23f';ctx.lineWidth=3;ctx.setLineDash([]);
-    ctx.beginPath();ctx.moveTo(S.from.x*W,S.from.y*H);ctx.lineTo(S.to.x*W,S.to.y*H);ctx.stroke();
-    // arrow head
-    const ang=Math.atan2((S.to.y-S.from.y)*H,(S.to.x-S.from.x)*W);
-    const ax=S.to.x*W,ay=S.to.y*H;
-    ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-10*Math.cos(ang-.4),ay-10*Math.sin(ang-.4));ctx.lineTo(ax-10*Math.cos(ang+.4),ay-10*Math.sin(ang+.4));ctx.closePath();ctx.fillStyle='#ffd23f';ctx.fill();
-  }
-  if(S.from)dot(S.from,'#23d3b3');
-  if(S.to)dot(S.to,'#ff6a2b');
 }
 // zone from normalized point (1-6 volleyball rotation per half)
 function zoneOf(p){
@@ -943,9 +1006,10 @@ async function recordAction(outcomeKey){
 
 async function renderLog(){
   const acts=(await getByIndex('actions','match',S.currentMatch.id)).sort((a,b)=>b.ts-a.ts);
+  cacheActions(acts);
   $('#logCount').textContent=acts.length;
   $('#logList').innerHTML=acts.slice(0,14).map(a=>{
-    const t=a.mode==='video'&&a.videoTime!=null?fmtTime(a.videoTime):'Set '+a.setNum;
+    const t=a.videoTime>0?vlinkHtml(a):'Set '+a.setNum; // O7: timestamp cliccabile → seek
     const delBtn=`<button class="iconbtn sm" data-da="${a.id}" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button>`;
     if(a.generic){
       const rot=a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'';
@@ -1064,6 +1128,100 @@ $('#ytBack').onclick=()=>ytPlayer&&ytPlayer.seekTo&&ytPlayer.seekTo(Math.max(0,y
 $('#ytFwd').onclick=()=>ytPlayer&&ytPlayer.seekTo&&ytPlayer.seekTo(ytPlayer.getCurrentTime()+3,true);
 
 // =========================================================
+//  VIDEO INTERATTIVO (O7) — seek dal log, clip e playlist
+// =========================================================
+const CLIP_PRE=5, CLIP_POST=2;       // secondi prima/dopo il tag (il tag arriva a fine azione)
+const ACT_CACHE=new Map();           // id → azione, alimentata da log/statistiche/mappa
+function cacheActions(list){for(const a of list)ACT_CACHE.set(a.id,a);}
+function vlinkHtml(a){return `<button class="vlink" data-seek="${a.id}" aria-label="Rivedi l'azione al minuto ${fmtTime(a.videoTime)}">▶ ${fmtTime(a.videoTime)}</button>`;}
+function actionLabel(a){
+  if(a.generic)return genericLabel(a);
+  const p=S.players.find(x=>x.id===a.playerId),f=FUNDAMENTALS[a.fund];
+  return `#${p?p.number:'?'} ${p?esc(p.name):''} · ${f?f.label:''} ${a.outcome||''}`;
+}
+const videoReady={
+  file:()=>{const v=$('#vid');return !!(v&&v.currentSrc&&!isNaN(v.duration));},
+  yt:()=>!!(ytPlayer&&ytPlayer.seekTo&&ytPlayer.getDuration&&ytPlayer.getDuration()>0),
+};
+function vidNow(){return S.vsrc==='yt'?(ytPlayer&&ytPlayer.getCurrentTime?ytPlayer.getCurrentTime():0):vEl().currentTime;}
+function vidSeekPlay(t){
+  if(S.vsrc==='yt'){ytPlayer.seekTo(t,true);ytPlayer.playVideo();$('#ytPlay').textContent='⏸';}
+  else{const v=vEl();v.currentTime=t;v.play().catch(()=>{});$('#vPlay').textContent='⏸';}
+}
+function vidPause(){
+  if(S.vsrc==='yt'){ytPlayer&&ytPlayer.pauseVideo&&ytPlayer.pauseVideo();$('#ytPlay').textContent='▶';}
+  else{vEl().pause();$('#vPlay').textContent='▶';}
+}
+const clip={ids:[],i:0,end:null,timer:null};
+function stopClipWatch(){clearInterval(clip.timer);clip.timer=null;clip.end=null;}
+// un comando manuale sul player annulla lo stop automatico della clip
+['#vBack','#vFwd','#vSeek','#vPlay','#ytBack','#ytFwd','#ytPlay'].forEach(s=>$(s).addEventListener(s==='#vSeek'?'input':'click',stopClipWatch));
+
+async function playAction(id){
+  const a=ACT_CACHE.get(id);
+  if(!a||!(a.videoTime>0))return toast('Azione senza riferimento video');
+  // l'azione appartiene a un'altra partita: la si attiva (il video caricato deve essere quello giusto)
+  const switched=a.matchId!==S.currentMatch?.id;
+  if(switched){
+    const m=S.matches.find(x=>x.id===a.matchId);
+    if(!m)return toast('Partita non trovata');
+    S.currentMatch=m;await saveState();renderCtx();toast('Partita attivata: vs '+m.opponent);
+  }
+  if(switched||$('#v-scout').classList.contains('hidden'))show('scout');
+  await renderLog(); // attende il log per poter evidenziare la riga
+  if(S.mode!=='video')$('#modeSeg [data-mode="video"]').click();
+  // sorgente: quella attiva se pronta, altrimenti l'altra
+  if(!videoReady[S.vsrc]()){
+    const other=S.vsrc==='yt'?'file':'yt';
+    if(videoReady[other]())$(`#vsrcSeg [data-vsrc="${other}"]`).click();
+    else{
+      $('#videoPanel').scrollIntoView({behavior:'smooth',block:'center'});
+      return toast('Carica prima il video della partita, poi tocca di nuovo ▶');
+    }
+  }
+  const start=Math.max(0,a.videoTime-CLIP_PRE);
+  stopClipWatch();
+  vidSeekPlay(start);
+  clip.end=a.videoTime+CLIP_POST;
+  clip.timer=setInterval(()=>{
+    if(clip.end==null||vidNow()<clip.end)return;
+    stopClipWatch();
+    if(clip.ids.length&&clip.i<clip.ids.length-1)setTimeout(()=>clipGo(clip.i+1),600); // playlist: avanza
+    else vidPause();
+  },250);
+  renderClipBar(a);
+  // evidenzia la riga nel log (se visibile tra le ultime azioni)
+  $$('.logrow.hl').forEach(r=>r.classList.remove('hl'));
+  const row=$(`#logList [data-seek="${id}"]`);row&&row.closest('.logrow').classList.add('hl');
+  // scorre al player tenendo conto di header e barra punteggio sticky
+  const off=(document.querySelector('.top')?.offsetHeight||0)+($('#scoreBar')?.offsetHeight||0)+8;
+  window.scrollTo({top:$('#videoPanel').getBoundingClientRect().top+window.scrollY-off,behavior:'smooth'});
+}
+function renderClipBar(a){
+  const on=clip.ids.length>1;
+  $('#clipBar').classList.toggle('hidden',!on);
+  if(!on)return;
+  $('#clipInfo').innerHTML=`<b>Clip ${clip.i+1}/${clip.ids.length}</b><br><span style="color:var(--mut)">${actionLabel(a)} · ${fmtTime(a.videoTime)}</span>`;
+  $('#clipPrev').disabled=clip.i===0;$('#clipNext').disabled=clip.i>=clip.ids.length-1;
+}
+function clipGo(i){if(i<0||i>=clip.ids.length)return;clip.i=i;playAction(clip.ids[i]);}
+function startClips(ids){
+  ids=ids.filter(id=>ACT_CACHE.get(id)?.videoTime>0);
+  if(!ids.length)return toast('Nessuna azione con video');
+  clip.ids=ids;clip.i=0;playAction(ids[0]);
+}
+$('#clipPrev').onclick=()=>clipGo(clip.i-1);
+$('#clipNext').onclick=()=>clipGo(clip.i+1);
+$('#clipClose').onclick=()=>{clip.ids=[];clip.i=0;stopClipWatch();$('#clipBar').classList.add('hidden');};
+// delega globale: ▶ singola azione (data-seek) o playlist (data-clips)
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-seek]');
+  if(s){e.preventDefault();clip.ids=[];playAction(s.dataset.seek);return;}
+  const c=e.target.closest('[data-clips]');
+  if(c){e.preventDefault();startClips(c.dataset.clips.split(','));}
+});
+
+// =========================================================
 //  STATS
 // =========================================================
 let statFund='all';
@@ -1082,6 +1240,7 @@ function renderStats(){
   });
   sel.onchange=computeStats;
   computeStats();
+  if(statTab==='map')renderMap();
 }
 // a chi è andato il punto per questa azione: 'us' | 'opp' | null
 function actionPoint(a){
@@ -1098,6 +1257,7 @@ async function computeStats(){
     const ms=S.matches.filter(m=>m.teamId===S.currentTeam.id);
     for(const m of ms)acts=acts.concat(await getByIndex('actions','match',m.id));
   }else acts=await getByIndex('actions','match',matchId);
+  cacheActions(acts);
   // separa azioni tecniche (per giocatore/fondamentale) da quelle generiche (punto rapido)
   let skill=acts.filter(a=>!a.generic);
   if(statFund!=='all')skill=skill.filter(a=>a.fund===statFund);
@@ -1168,13 +1328,144 @@ async function computeStats(){
     const pE=pa.filter(a=>a.outcome==='=').length;
     const pPos=pa.filter(a=>['#','+'].includes(a.outcome)).length;
     const ef=Math.round(pa.reduce((s,a)=>{const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return s+(o?o.w:0);},0)/t*50);
-    return {p,t,pP,pE,posPct:Math.round(pPos/t*100),ef};
+    const vids=pa.filter(a=>a.videoTime>0).sort((a,b)=>a.ts-b.ts).map(a=>a.id);
+    return {p,t,pP,pE,posPct:Math.round(pPos/t*100),ef,vids};
   }).filter(Boolean).sort((a,b)=>b.ef-a.ef);
-  $('#playerStatsBox').innerHTML=`<table><thead><tr><th class="pl">Giocatore</th><th>Tot</th><th>Punti</th><th>Err</th><th>Pos%</th><th>Eff%</th></tr></thead><tbody>${rows.map(r=>`
+  $('#playerStatsBox').innerHTML=`<table><thead><tr><th class="pl">Giocatore</th><th>Tot</th><th>Punti</th><th>Err</th><th>Pos%</th><th>Eff%</th><th title="Rivedi le azioni in video">▶</th></tr></thead><tbody>${rows.map(r=>`
     <tr><td class="pl">#${r.p.number} ${esc(r.p.name)}</td><td>${r.t}</td><td style="color:var(--good)">${r.pP}</td><td style="color:var(--bad)">${r.pE}</td>
     <td>${r.posPct}%<div class="statbar"><i style="width:${r.posPct}%;background:var(--good)"></i></div></td>
-    <td style="font-weight:800;color:${r.ef>=0?'var(--acc2)':'var(--bad)'}">${r.ef>0?'+':''}${r.ef}</td></tr>`).join('')}</tbody></table>`;
+    <td style="font-weight:800;color:${r.ef>=0?'var(--acc2)':'var(--bad)'}">${r.ef>0?'+':''}${r.ef}</td>
+    <td>${r.vids.length?`<button class="vlink" data-clips="${r.vids.join(',')}" aria-label="Rivedi ${r.vids.length} azioni in video">▶ ${r.vids.length}</button>`:'<span style="color:var(--mut2)">—</span>'}</td></tr>`).join('')}</tbody></table>`;
 }
+
+// =========================================================
+//  MAPPA (O6) — densità ricezioni + traiettorie per fondamentale
+// =========================================================
+let statTab='num', mapFund='attacco';
+const mapHits={mapRec:[],mapTraj:[]};   // punti cliccabili (coordinate normalizzate) → id azione
+$$('#statTabSeg button').forEach(b=>b.onclick=()=>{
+  statTab=b.dataset.st;
+  $$('#statTabSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#statTabNum').classList.toggle('hidden',statTab!=='num');
+  $('#statTabMap').classList.toggle('hidden',statTab!=='map');
+  if(statTab==='map')renderMap();
+});
+function mapCtx(id){
+  const c=$('#'+id),dpr=Math.min(3,window.devicePixelRatio||1);
+  c.width=COURT.W*dpr;c.height=COURT.H*dpr;
+  const ctx=c.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return ctx;
+}
+function outcomeColor(a){const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return OUTCOME_COLOR[o?.cls]||'#888';}
+// punto di ricezione: l'estremo della traiettoria nella nostra metà (preferendo "partenza" = contatto)
+function recPoint(a){
+  if(a.from&&a.from.y>=.5)return a.from;
+  if(a.to&&a.to.y>=.5)return a.to;
+  return null;
+}
+async function renderMap(){
+  if(!S.currentTeam){$('#mapVidList').innerHTML='<div class="empty">Nessuna squadra</div>';return;}
+  // filtri (mantengono la selezione corrente)
+  const ms=S.matches.filter(m=>m.teamId===S.currentTeam.id).sort((a,b)=>b.createdAt-a.createdAt);
+  const mSel=$('#mapMatch'),pSel=$('#mapPlayer');
+  const mVal=mSel.value||'all',pVal=pSel.value||'all';
+  mSel.innerHTML='<option value="all">Tutte le partite</option>'+ms.map(m=>`<option value="${m.id}">vs ${esc(m.opponent)} · ${esc(m.date)}</option>`).join('');
+  mSel.value=[...mSel.options].some(o=>o.value===mVal)?mVal:'all';
+  pSel.innerHTML='<option value="all">Tutti i giocatori</option>'+teamPlayers().map(p=>`<option value="${p.id}">#${p.number} ${esc(p.name)}</option>`).join('');
+  pSel.value=[...pSel.options].some(o=>o.value===pVal)?pVal:'all';
+  mSel.onchange=pSel.onchange=renderMap;
+  const trajFunds=FUND_KEYS.filter(k=>k!=='ricezione');
+  if(!trajFunds.includes(mapFund))mapFund='attacco';
+  $('#mapFundChips').innerHTML=trajFunds.map(k=>`<button class="chip teal ${mapFund===k?'on':''}" data-mf="${k}">${FUNDAMENTALS[k].label}</button>`).join('');
+  $$('#mapFundChips .chip').forEach(c=>c.onclick=()=>{mapFund=c.dataset.mf;renderMap();});
+  // dati
+  let acts=[];
+  if(mSel.value==='all'){for(const m of ms)acts=acts.concat(await getByIndex('actions','match',m.id));}
+  else acts=await getByIndex('actions','match',mSel.value);
+  cacheActions(acts);
+  let skill=acts.filter(a=>!a.generic&&a.from&&a.to);
+  if(pSel.value!=='all')skill=skill.filter(a=>a.playerId===pSel.value);
+  const rec=skill.filter(a=>a.fund==='ricezione'&&recPoint(a));
+  const traj=skill.filter(a=>a.fund===mapFund).sort((a,b)=>a.ts-b.ts).slice(-300);
+  drawRecMap(rec);drawTrajMap(traj);
+  $('#mapRecCount').textContent=rec.length+' azioni';
+  $('#mapTrajCount').textContent=traj.length+' azioni';
+  $('#mapTrajTitle').textContent='Traiettorie · '+FUNDAMENTALS[mapFund].label;
+  // legenda: esiti del fondamentale selezionato + scala densità
+  $('#mapLegend').innerHTML=FUNDAMENTALS[mapFund].outcomes.map(o=>`<span><i style="background:${OUTCOME_COLOR[o.cls]}"></i>${o.k} ${o.lbl}</span>`).join('')+
+    '<span><i style="background:linear-gradient(90deg,#2b6cff,#ffd23f,#ff4d5e)"></i>densità ricezioni</span><span>Bordo bianco = azione con video: toccala sulla mappa per rivederla</span>';
+  // elenco azioni con video (ricezioni + fondamentale selezionato)
+  const vids=rec.concat(traj).filter(a=>a.videoTime>0).sort((a,b)=>a.ts-b.ts);
+  $('#mapVidCount').textContent=vids.length;
+  $('#mapVidList').innerHTML=vids.length?
+    `<button class="btn pri full" data-clips="${vids.map(a=>a.id).join(',')}" style="margin-bottom:8px">▶ Riproduci tutte in sequenza (${vids.length})</button>`+
+    vids.slice(-60).reverse().map(a=>`<div class="logrow"><span class="dot" style="background:${outcomeColor(a)}"></span>
+      ${actionLabel(a)} <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>
+      <span class="meta">${vlinkHtml(a)}</span></div>`).join('')
+    :'<div class="empty" style="padding:18px">Nessuna azione con riferimento video. Tagga in modalità <b>VIDEO</b> per poterle rivedere da qui.</div>';
+}
+function drawRecMap(list){
+  const ctx=mapCtx('mapRec'),W=COURT.W,H=COURT.H;
+  drawCourtBase(ctx);
+  // oscura la metà avversaria: la mappa riguarda la nostra ricezione
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,0,W,H/2);
+  const pts=list.map(a=>({a,p:recPoint(a)}));
+  mapHits.mapRec=pts.map(o=>({x:o.p.x,y:o.p.y,id:o.a.id,v:o.a.videoTime>0}));
+  if(pts.length){
+    // densità: somma di kernel gaussiani su griglia 3px, colorata blu→giallo→rosso
+    const cs=3,gw=Math.ceil(W/cs),gh=Math.ceil(H/cs),g=new Float32Array(gw*gh),R=26,sig2=2*(R/2)**2;
+    let max=0;
+    for(const {p} of pts){
+      const cx=p.x*W,cy=p.y*H;
+      for(let j=Math.max(0,Math.floor((cy-R)/cs));j<Math.min(gh,Math.ceil((cy+R)/cs));j++)
+        for(let i=Math.max(0,Math.floor((cx-R)/cs));i<Math.min(gw,Math.ceil((cx+R)/cs));i++){
+          const dx=i*cs-cx,dy=j*cs-cy,v=Math.exp(-(dx*dx+dy*dy)/sig2);
+          const k=j*gw+i;g[k]+=v;if(g[k]>max)max=g[k];
+        }
+    }
+    const heat=t=>t<.5?[43+(255-43)*t*2,108+(210-108)*t*2,255-(255-63)*t*2]:[255,210-(210-77)*(t-.5)*2,63+(94-63)*(t-.5)*2];
+    for(let j=0;j<gh;j++)for(let i=0;i<gw;i++){
+      const t=g[j*gw+i]/max;if(t<.06)continue;
+      const [r,gg,b]=heat(t);ctx.fillStyle=`rgba(${r|0},${gg|0},${b|0},${(.18+.55*t).toFixed(2)})`;ctx.fillRect(i*cs,j*cs,cs,cs);
+    }
+    // punti colorati per esito
+    for(const {a,p} of pts){
+      ctx.fillStyle=outcomeColor(a);ctx.beginPath();ctx.arc(p.x*W,p.y*H,a.videoTime>0?4:3,0,7);ctx.fill();
+      if(a.videoTime>0){ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();}
+    }
+  }
+  // per zona (nostra metà): numero ricezioni e % positive (# +)
+  const byZ={};for(const {a,p} of pts){const z=zoneOf(p);(byZ[z]=byZ[z]||[]).push(a);}
+  const colX=c=>COURT.M+(W-2*COURT.M)*(c+.5)/3;
+  const rows=[{zs:[4,3,2],y:(H/2+COURT.line3Bot)/2},{zs:[5,6,1],y:(COURT.line3Bot+H-COURT.M)/2}];
+  ctx.textAlign='center';
+  for(const r of rows)r.zs.forEach((z,c)=>{
+    const l=byZ['NOI Z'+z]||[];
+    ctx.fillStyle='rgba(255,255,255,.8)';ctx.font='800 13px Manrope';ctx.fillText('Z'+z,colX(c),r.y-8);
+    ctx.font='700 11px Manrope';
+    ctx.fillText(l.length?`${l.length} · ${Math.round(l.filter(a=>['#','+'].includes(a.outcome)).length/l.length*100)}% pos`:'—',colX(c),r.y+8);
+  });
+  if(!pts.length){ctx.fillStyle='rgba(255,255,255,.75)';ctx.font='700 12px Manrope';ctx.fillText('Nessuna ricezione con traiettoria',W/2,H/4);}
+}
+function drawTrajMap(list){
+  const ctx=mapCtx('mapTraj'),W=COURT.W,H=COURT.H;
+  drawCourtBase(ctx);
+  mapHits.mapTraj=list.map(a=>({x:a.to.x,y:a.to.y,id:a.id,v:a.videoTime>0}));
+  ctx.globalAlpha=list.length>60?.55:.85;
+  for(const a of list)drawArrow(ctx,a.from,a.to,outcomeColor(a),1.8,7);
+  ctx.globalAlpha=1;
+  for(const a of list){
+    ctx.fillStyle=outcomeColor(a);ctx.beginPath();ctx.arc(a.to.x*W,a.to.y*H,a.videoTime>0?4:3,0,7);ctx.fill();
+    if(a.videoTime>0){ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();}
+  }
+  if(!list.length){ctx.fillStyle='rgba(255,255,255,.75)';ctx.font='700 12px Manrope';ctx.textAlign='center';ctx.fillText('Nessuna traiettoria per questo filtro',W/2,H/2-12);}
+}
+// tocco su un punto della mappa → riproduce l'azione più vicina con video (raggio 14px)
+['mapRec','mapTraj'].forEach(id=>$('#'+id).addEventListener('click',e=>{
+  const r=e.target.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+  let best=null,bd=14;
+  for(const h of mapHits[id]){if(!h.v)continue;const d=Math.hypot((h.x-x)*r.width,(h.y-y)*r.height);if(d<bd){bd=d;best=h;}}
+  if(best){clip.ids=[];playAction(best.id);}
+}));
 
 // ----- export / import -----
 $('#exportJson').onclick=async()=>{
