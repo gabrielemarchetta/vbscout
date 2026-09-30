@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0c0e12">
 <title>VBScout — Scouting Pallavolo</title>
 <link rel="manifest" href="manifest.json">
@@ -149,6 +149,13 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .chip.sm b{color:var(--txt);font-family:'Saira Condensed';font-size:14px}
 .chip.rot{background:rgba(74,163,255,.14);border-color:rgba(74,163,255,.4);color:var(--blue)}
 .chip.rot.set{background:rgba(74,163,255,.22)}
+.chip.srv.us{background:rgba(255,210,63,.16);border-color:rgba(255,210,63,.5);color:var(--acc2)}
+.chip.srv.opp{background:rgba(35,211,179,.14);border-color:rgba(35,211,179,.45);color:var(--teal)}
+.chip.fast.on{background:var(--acc2);border-color:var(--acc2);color:#1a1405;font-weight:800}
+.pcell.field{border-color:var(--teal);box-shadow:0 0 0 1px rgba(35,211,179,.35) inset}
+.pcell.bench{opacity:.6}
+.pcell .zb{position:absolute;top:3px;right:5px;font-size:8.5px;font-weight:800;color:var(--teal);letter-spacing:.5px}
+.pdiv{grid-column:1/-1;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut2);font-weight:700;margin-top:2px}
 .sb-main{display:flex;gap:10px}
 .sb-box{flex:1;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:6px 8px 8px;text-align:center}
 .sb-box.us{box-shadow:0 0 0 1px rgba(255,106,43,.35) inset}
@@ -195,6 +202,9 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:80;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.act{display:flex;align-items:center;gap:14px;pointer-events:none;padding:8px 8px 8px 16px}
+.toast.act.show{pointer-events:auto}
+.toast.act button{background:var(--acc);color:#1a0f08;font-weight:800;padding:8px 14px;border-radius:9px;font-size:13px}
 .upd-banner{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:85;background:var(--blue);color:#051a30;font-weight:800;font-size:13px;padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:calc(100% - 32px)}
 
 /* ---------- modal ---------- */
@@ -263,19 +273,21 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="chip sm" id="setNumBtn">SET <b id="setNum">1</b></button>
         <button class="chip sm" id="newSetBtn">Chiudi set ▸</button>
         <span class="grow"></span>
-        <button class="chip sm rot" id="rotBtn">ROT <b id="rotLabel">—</b> ↻</button>
+        <button class="chip sm srv" id="serveBtn" aria-label="Fase corrente: tocca per indicare chi batte">❔ BAT?</button>
+        <button class="chip sm rot" id="rotBtn" aria-label="Avanza rotazione">ROT <b id="rotLabel">—</b> ↻</button>
         <button class="chip sm" id="lineupBtn">⚙ Formazione</button>
+        <button class="chip sm fast" id="fastBtn" aria-pressed="false" aria-label="Modalità scouting veloce">⚡ Veloce</button>
       </div>
       <div class="sb-main">
         <div class="sb-box us">
           <div class="sb-name" id="usName">NOI</div>
           <div class="sb-val" id="usScore">0</div>
-          <div class="sb-pm"><button data-pt="us-">−</button><button data-pt="us+">+</button></div>
+          <div class="sb-pm"><button data-pt="us-" aria-label="Togli un punto a noi">−</button><button data-pt="us+" aria-label="Aggiungi un punto a noi">+</button></div>
         </div>
         <div class="sb-box">
           <div class="sb-name" id="oppName">AVV.</div>
           <div class="sb-val" id="oppScore">0</div>
-          <div class="sb-pm"><button data-pt="opp-">−</button><button data-pt="opp+">+</button></div>
+          <div class="sb-pm"><button data-pt="opp-" aria-label="Togli un punto all'avversario">−</button><button data-pt="opp+" aria-label="Aggiungi un punto all'avversario">+</button></div>
         </div>
       </div>
     </div>
@@ -299,10 +311,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="btn gho full" id="loadVideoBtn">Carica video dal dispositivo</button>
         <video id="vid" class="hidden" playsinline></video>
         <div class="vbar hidden" id="vidBar">
-          <button class="iconbtn" id="vBack">⏪</button>
-          <button class="iconbtn" id="vPlay">▶</button>
-          <button class="iconbtn" id="vFwd">⏩</button>
-          <input type="range" id="vSeek" class="grow" min="0" max="100" value="0" step="0.1" style="accent-color:var(--acc)">
+          <button class="iconbtn" id="vBack" aria-label="Indietro di 3 secondi">⏪</button>
+          <button class="iconbtn" id="vPlay" aria-label="Riproduci">▶</button>
+          <button class="iconbtn" id="vFwd" aria-label="Avanti di 3 secondi">⏩</button>
+          <input type="range" id="vSeek" aria-label="Posizione nel video" class="grow" min="0" max="100" value="0" step="0.1" style="accent-color:var(--acc)">
           <span class="vtime" id="vTime">0:00 / 0:00</span>
         </div>
       </div>
@@ -315,9 +327,9 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         </div>
         <div id="ytWrap" class="hidden"><div id="ytPlayer"></div></div>
         <div class="vbar hidden" id="ytBar">
-          <button class="iconbtn" id="ytBack">⏪</button>
-          <button class="iconbtn" id="ytPlay">▶</button>
-          <button class="iconbtn" id="ytFwd">⏩</button>
+          <button class="iconbtn" id="ytBack" aria-label="Indietro di 3 secondi">⏪</button>
+          <button class="iconbtn" id="ytPlay" aria-label="Riproduci">▶</button>
+          <button class="iconbtn" id="ytFwd" aria-label="Avanti di 3 secondi">⏩</button>
           <span class="vtime grow" id="ytTime" style="text-align:center">0:00 / 0:00</span>
         </div>
         <div style="font-size:11px;color:var(--mut2);margin-top:8px;line-height:1.4">Le azioni vengono agganciate al minuto del video. Per fluidità, metti in pausa con ⏸ prima di taggare. Funziona al meglio con l'app pubblicata online (GitHub Pages).</div>
@@ -336,19 +348,20 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     </div>
 
     <!-- step 1: player -->
-    <div class="sec-title">1 · Giocatore</div>
+    <div class="sec-title" id="stepPlayer">1 · Giocatore</div>
     <div class="card"><div class="pgrid" id="scoutPlayers"></div></div>
 
     <!-- step 2: fundamental -->
-    <div class="sec-title">2 · Fondamentale</div>
-    <div class="card"><div class="chips" id="fundChips"></div></div>
+    <div class="sec-title" id="stepFund">2 · Fondamentale</div>
+    <div class="card"><div class="chips" id="fundChips"></div>
+      <button class="btn sm gho full hidden" id="samePlayerBtn" style="margin-top:10px">↺ Stesso giocatore</button></div>
 
     <!-- step 2b: set destination (only for alzata) -->
     <div class="sec-title hidden" id="setCallTitle">Alzata · dove alza</div>
     <div class="card hidden" id="setCallCard"><div class="chips" id="setCallChips"></div></div>
 
     <!-- step 3: court -->
-    <div class="sec-title">3 · Traiettoria <span class="tag" id="courtTag">tocca 2 punti</span></div>
+    <div class="sec-title" id="stepCourt">3 · Traiettoria <span class="tag" id="courtTag">tocca 2 punti</span></div>
     <div class="card">
       <div class="courtwrap"><canvas class="court" id="court" width="270" height="480"></canvas></div>
       <div class="courthint" id="courtHint">Tocca il punto di partenza dell'azione</div>
@@ -356,7 +369,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     </div>
 
     <!-- step 4: outcome -->
-    <div class="sec-title">4 · Esito</div>
+    <div class="sec-title" id="stepOutcome">4 · Esito</div>
     <div class="card"><div class="outs" id="outcomeGrid"></div></div>
 
     <!-- live log -->
@@ -401,14 +414,15 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 </div>
 
 <!-- bottom nav -->
-<nav class="nav" id="nav">
+<nav class="nav" id="nav" aria-label="Navigazione principale">
   <button data-v="match" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>PARTITA</button>
   <button data-v="roster"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="18" cy="9" r="2.2"/><path d="M16 20c0-2 1-3.5 2.5-4"/></svg>ROSA</button>
   <button data-v="scout"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 0 0 0 18M3.5 9h17M3.5 15h17"/></svg>SCOUT</button>
   <button data-v="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>STAT</button>
 </nav>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="toast act" id="toastAct" role="status" aria-live="polite"><span id="toastActMsg"></span><button type="button" id="toastActBtn">Annulla</button></div>
 <div id="modalRoot"></div>
 
 <script>
@@ -483,12 +497,36 @@ const S={teams:[],players:[],matches:[],
   currentTeam:null, currentMatch:null,
   // scout selection
   selPlayer:null, selFund:'battuta', from:null, to:null, mode:'live', vsrc:'file', setCall:null,
+  // O2: modalità veloce (persistita), ultimo giocatore usato; O13: eliminazione azione in attesa di conferma
+  fast:false, lastPlayer:null, pendingDel:null,
 };
+try{S.fast=localStorage.getItem('vbscout.fast')==='1';}catch(_){}
 
 // ---------- helpers ----------
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1600);}
+function toast(msg){$('#toastAct').classList.remove('show');const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1600);}
+// O13: toast con pulsante di azione (es. "Annulla"); onTimeout parte se l'utente non tocca il pulsante
+function toastAction(msg,label,onAction,onTimeout,ms=3000){
+  const t=$('#toastAct'),b=$('#toastActBtn');
+  $('#toast').classList.remove('show');
+  $('#toastActMsg').textContent=msg;b.textContent=label;
+  clearTimeout(t._t);t.classList.add('show');
+  const done=()=>{clearTimeout(t._t);t.classList.remove('show');b.onclick=null;};
+  b.onclick=()=>{done();onAction&&onAction();};
+  t._t=setTimeout(()=>{done();onTimeout&&onTimeout();},ms);
+}
+// O13: bottom-sheet di conferma al posto di confirm() → Promise<boolean>
+function confirmSheet(title,msg,okLabel='Elimina',danger=true){
+  return new Promise(res=>{
+    modal(`<h2 style="margin:0 0 8px;font-size:22px">${esc(title)}</h2>
+      <p style="color:var(--mut);margin:0 0 16px;font-size:14px;line-height:1.4">${esc(msg)}</p>
+      <button class="btn ${danger?'danger':'pri'} full" id="cfOk">${esc(okLabel)}</button>
+      <button class="btn gho full" id="cfNo" style="margin-top:8px">Annulla</button>`,()=>res(false));
+    $('#cfOk').onclick=()=>{closeModal(true);res(true);};
+    $('#cfNo').onclick=()=>{closeModal();};
+  });
+}
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 // B8: data YYYY-MM-DD nel fuso orario locale (toISOString usa UTC)
 function localISODate(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -505,6 +543,7 @@ function show(v){
   if(v==='roster') renderRoster();
   if(v==='scout')  renderScout();
   if(v==='stats')  renderStats();
+  syncYtTimer();
   window.scrollTo(0,0);
 }
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)show(b.dataset.v);});
@@ -512,12 +551,20 @@ $('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)s
 // =========================================================
 //  MODAL helper
 // =========================================================
-function modal(html){
+let modalOnClose=null;
+function modal(html,onClose){
+  if(modalOnClose){const f=modalOnClose;modalOnClose=null;f();} // un nuovo sheet chiude il precedente
   const root=$('#modalRoot');
-  root.innerHTML=`<div class="modal"><div class="sheet"><div class="grab"></div>${html}</div></div>`;
+  root.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><div class="sheet"><div class="grab"></div>${html}</div></div>`;
+  modalOnClose=onClose||null;
   root.querySelector('.modal').addEventListener('click',e=>{if(e.target.classList.contains('modal'))closeModal();});
 }
-function closeModal(){$('#modalRoot').innerHTML='';}
+// silent=true: chiude senza invocare la callback onClose (es. conferma avvenuta)
+function closeModal(silent){
+  const f=modalOnClose;modalOnClose=null;
+  $('#modalRoot').innerHTML='';
+  if(f&&!silent)f();
+}
 
 // =========================================================
 //  TEAMS
@@ -549,7 +596,7 @@ function teamSheet(team){
     await saveState();closeModal();renderMatchView();renderCtx();toast('Squadra salvata');
   };
   if(ed)$('#tDel').onclick=async()=>{
-    if(!confirm('Eliminare la squadra, la sua rosa e le partite?'))return;
+    if(!await confirmSheet('Eliminare la squadra?','Verranno eliminate anche la rosa, tutte le partite e le azioni registrate. L\'operazione non si può annullare.','Elimina squadra'))return;
     const pls=await getByIndex('players','team',team.id);for(const p of pls)await del('players',p.id);
     const mts=await getByIndex('matches','team',team.id);
     for(const m of mts){const acts=await getByIndex('actions','match',m.id);for(const a of acts)await del('actions',a.id);await del('matches',m.id);}
@@ -578,7 +625,7 @@ function renderMatchView(){
         <div style="color:var(--mut);font-size:14px;margin-top:4px">Set: ${sets}</div></div></div>
       <div class="row" style="margin-top:14px">
         <button class="btn pri grow" id="goScout">▶ Vai allo scouting</button>
-        <button class="btn gho" id="editMatch">✎</button>
+        <button class="btn gho" id="editMatch" aria-label="Modifica partita">✎</button>
       </div>`;
     $('#goScout').onclick=()=>show('scout');
     $('#editMatch').onclick=()=>matchSheet(m);
@@ -594,7 +641,7 @@ function renderMatchView(){
         <input type="radio" name="curteam" ${t.id===S.currentTeam?.id?'checked':''} style="display:none" data-team="${t.id}">
         ${esc(t.name)}</label>
       <span style="color:var(--mut);font-size:12px">${esc(t.cat||'')}</span>
-      <button class="iconbtn" style="margin-left:auto" data-editteam="${t.id}">✎</button>
+      <button class="iconbtn" style="margin-left:auto" data-editteam="${t.id}" aria-label="Modifica squadra ${esc(t.name)}">✎</button>
     </div></div>`).join(''):'<div class="empty" style="padding:18px">Crea la tua prima squadra ▾</div>';
   $$('[data-team]').forEach(r=>r.onchange=async()=>{
     S.currentTeam=S.teams.find(t=>t.id===r.dataset.team);S.currentMatch=null;
@@ -640,7 +687,7 @@ function matchSheet(m){
     await saveState();closeModal();renderMatchView();renderCtx();toast('Partita salvata');
   };
   if(ed)$('#mDel').onclick=async()=>{
-    if(!confirm('Eliminare la partita e tutte le sue azioni?'))return;
+    if(!await confirmSheet('Eliminare la partita?','Verranno eliminate anche tutte le azioni registrate per questa partita. L\'operazione non si può annullare.','Elimina partita'))return;
     const acts=await getByIndex('actions','match',m.id);for(const a of acts)await del('actions',a.id);
     await del('matches',m.id);S.matches=S.matches.filter(x=>x.id!==m.id);
     if(S.currentMatch?.id===m.id)S.currentMatch=null;
@@ -662,7 +709,9 @@ function renderRoster(){
     const p=S.players.find(x=>x.id===c.dataset.del);
     modal(`<h2 style="margin:0 0 6px;font-size:22px">#${p.number} ${esc(p.name)}</h2><p style="color:var(--mut);margin:0 0 16px">${esc(p.role)}</p>
       <button class="btn danger gho full" id="delP">Rimuovi dalla rosa</button>`);
-    $('#delP').onclick=async()=>{await del('players',p.id);S.players=S.players.filter(x=>x.id!==p.id);closeModal();renderRoster();};
+    $('#delP').onclick=async()=>{
+      if(!await confirmSheet('Rimuovere #'+p.number+' '+p.name+'?','Il giocatore verrà tolto dalla rosa. Le azioni già registrate restano nelle partite.','Rimuovi giocatore'))return;
+      await del('players',p.id);S.players=S.players.filter(x=>x.id!==p.id);closeModal();renderRoster();};
   });
 }
 $('#addPlayerBtn').onclick=async()=>{
@@ -694,11 +743,34 @@ function renderScout(){
   renderScore();
   // players
   const pls=teamPlayers();
-  $('#scoutPlayers').innerHTML=pls.length?pls.map(p=>`<div class="pcell ${S.selPlayer===p.id?'on':''}" data-p="${p.id}"><div class="num">${p.number}</div><div class="nm">${esc(p.name)}</div></div>`).join(''):'<div class="empty" style="grid-column:1/-1;padding:14px">Aggiungi giocatori nella Rosa</div>';
-  $$('#scoutPlayers .pcell').forEach(c=>c.onclick=()=>{S.selPlayer=c.dataset.p;renderScout();});
+  const cell=(p,cls='',badge='')=>`<button type="button" class="pcell ${cls} ${S.selPlayer===p.id?'on':''}" data-p="${p.id}" aria-pressed="${S.selPlayer===p.id}" aria-label="#${p.number} ${esc(p.name)}${badge?' · '+badge:''}">${badge?`<span class="zb">${badge}</span>`:''}<div class="num">${p.number}</div><div class="nm">${esc(p.name)}</div></button>`;
+  let grid;
+  const onField=S.fast?fieldPlayerMap():null;
+  if(!pls.length)grid='<div class="empty" style="grid-column:1/-1;padding:14px">Aggiungi giocatori nella Rosa</div>';
+  else if(onField&&onField.size){
+    // O2: giocatori in campo per primi (ordine zone 4-3-2-5-6-1, poi libero), poi la panchina
+    const field=pls.filter(p=>onField.has(p.id)).sort((a,b)=>onField.get(a.id).ord-onField.get(b.id).ord);
+    const bench=pls.filter(p=>!onField.has(p.id));
+    grid='<div class="pdiv">In campo</div>'+field.map(p=>cell(p,'field',onField.get(p.id).lbl)).join('')
+      +(bench.length?'<div class="pdiv">Panchina</div>'+bench.map(p=>cell(p,'bench')).join(''):'');
+  }else grid=pls.map(p=>cell(p)).join('');
+  $('#scoutPlayers').innerHTML=grid;
+  $$('#scoutPlayers .pcell').forEach(c=>c.onclick=()=>{S.selPlayer=c.dataset.p;renderScout();if(S.fast)scrollToStep($('#stepFund'));});
+  // O2: toggle veloce + "Stesso giocatore"
+  $('#fastBtn').classList.toggle('on',S.fast);$('#fastBtn').setAttribute('aria-pressed',S.fast);
+  const lp=S.fast&&S.lastPlayer&&pls.find(p=>p.id===S.lastPlayer);
+  $('#samePlayerBtn').classList.toggle('hidden',!lp);
+  if(lp)$('#samePlayerBtn').textContent=`↺ Stesso giocatore · #${lp.number} ${lp.name}`;
+  const req=trajRequired();
+  $('#courtTag').textContent=req?'tocca 2 punti':'opzionale';
+  if(!S.from)$('#courtHint').textContent=req?'Tocca il punto di partenza dell\'azione':'Traiettoria opzionale — puoi scegliere subito l\'esito';
   // fundamentals
-  $('#fundChips').innerHTML=FUND_KEYS.map(k=>`<button class="chip ${S.selFund===k?'on':''}" data-f="${k}">${FUNDAMENTALS[k].label}</button>`).join('');
-  $$('#fundChips .chip').forEach(c=>c.onclick=()=>{S.selFund=c.dataset.f;renderScout();});
+  $('#fundChips').innerHTML=FUND_KEYS.map(k=>`<button class="chip ${S.selFund===k?'on':''}" data-f="${k}" aria-pressed="${S.selFund===k}">${FUNDAMENTALS[k].label}</button>`).join('');
+  $$('#fundChips .chip').forEach(c=>c.onclick=()=>{
+    S.selFund=c.dataset.f;renderScout();
+    // O2: avanza allo step successivo (alzata: resta per scegliere la destinazione)
+    if(S.fast&&S.selFund!=='alzata')scrollToStep(trajRequired()&&!(S.from&&S.to)?$('#stepCourt'):$('#stepOutcome'));
+  });
   // set destination (alzata only)
   const isAlz=S.selFund==='alzata';
   $('#setCallTitle').classList.toggle('hidden',!isAlz);
@@ -726,6 +798,45 @@ function curZonePlayers(){
   const out={};for(let z=1;z<=6;z++)out[rotZone(z,m.rotStep)]=m.lineup[z];
   return out;
 }
+// O2: mappa playerId → {ord, lbl} dei giocatori in campo nella rotazione corrente (+ libero)
+function fieldPlayerMap(){
+  const zp=curZonePlayers(),map=new Map();if(!zp)return map;
+  [4,3,2,5,6,1].forEach((z,i)=>{if(zp[z])map.set(zp[z],{ord:i,lbl:'Z'+z});});
+  const lib=S.currentMatch.libero;if(lib&&!map.has(lib))map.set(lib,{ord:6,lbl:'L'});
+  return map;
+}
+// O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco
+function trajRequired(){return !S.fast||S.selFund==='battuta'||S.selFund==='attacco';}
+// scroll a uno step tenendo conto di top bar + scorebar sticky
+function scrollToStep(el){
+  if(!el)return;
+  const off=(document.querySelector('.top')?.offsetHeight||0)+($('#scoreBar')?.offsetHeight||0)+12;
+  window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-off,behavior:'smooth'});
+}
+// ----- O3: battuta / ricezione -----
+function curSetObj(){const m=S.currentMatch;return m&&m.sets?m.sets[m.curSet]:null;}
+// fase della prossima azione: K1 = stiamo ricevendo (side-out), K2 = stiamo battendo (break)
+function phaseNow(){const s=curSetObj();return s&&s.serve?(s.serve==='us'?'K2':'K1'):null;}
+// aggiorna chi batte dopo un punto; su side-out nostro avanza la rotazione. Salva sull'azione i dati per l'annullamento.
+function applyServeAfterPoint(a,winner){
+  const m=S.currentMatch,s=curSetObj();
+  if(!winner||!s||!s.serve||winner===s.serve)return '';
+  a.prevServe=s.serve;a.prevRotStep=m.rotStep??null;
+  s.serve=winner;
+  if(winner==='us'&&m.setterZone){m.rotStep=((m.rotStep||0)+1)%6;a.autoRot=true;return ' · cambio palla → '+rotLabelText();}
+  return winner==='us'?' · cambio palla':' · battuta AVV.';
+}
+function serveSheet(title){
+  const s=curSetObj();if(!s)return;
+  modal(`<h2 style="margin:0 0 6px;font-size:22px">${esc(title||'Chi batte ora?')}</h2>
+    <p style="color:var(--mut);margin:0 0 14px;font-size:13px">Serve per la rotazione automatica al cambio palla e per le statistiche side-out / break.</p>
+    <div class="row"><button class="btn pri grow" data-srv="us">🏐 Noi</button><button class="btn grow" data-srv="opp">🏐 Avversario</button></div>`);
+  $$('[data-srv]').forEach(b=>b.onclick=async()=>{
+    s.serve=b.dataset.srv;if(!s.firstServe)s.firstServe=s.serve;
+    await put('matches',S.currentMatch);closeModal();renderScore();
+    toast(s.serve==='us'?'Battiamo noi · fase K2':'Riceviamo · fase K1');
+  });
+}
 function fixStickyTop(){const t=document.querySelector('.top'),sb=$('#scoreBar');if(t&&sb)sb.style.top=t.offsetHeight+'px';}
 window.addEventListener('resize',fixStickyTop);
 
@@ -736,6 +847,10 @@ function renderScore(){
   const lbl=rotLabelText();
   $('#rotLabel').textContent=lbl;
   $('#rotBtn').classList.toggle('set',lbl!=='—');
+  const sv=s.serve,sb=$('#serveBtn');
+  sb.textContent=sv==='us'?'🏐 BAT':sv==='opp'?'📥 RIC':'❔ BAT?';
+  sb.classList.toggle('us',sv==='us');sb.classList.toggle('opp',sv==='opp');
+  sb.setAttribute('aria-label',sv==='us'?'Fase battuta (K2): tocca per cambiare':sv==='opp'?'Fase ricezione (K1): tocca per cambiare':'Chi batte? Tocca per impostarlo');
   fixStickyTop();
 }
 $$('[data-pt]').forEach(b=>b.onclick=async()=>{
@@ -746,7 +861,7 @@ $$('[data-pt]').forEach(b=>b.onclick=async()=>{
   s[key]+=d;
   await put('matches',m);renderScore();
   // B5: registra la correzione manuale come azione, così log e statistiche restano coerenti
-  const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side:w,gtype:'correction',delta:d,
+  const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side:w,gtype:'correction',delta:d,phase:phaseNow(),
     setNum:m.curSet+1,rotation:curSetterZone(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
   await put('actions',a);renderLog();
 });
@@ -767,6 +882,7 @@ function genericLabel(a){
 $('#newSetBtn').onclick=async()=>{
   const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;
   await put('matches',m);renderScore();toast('Nuovo set '+(m.curSet+1));
+  serveSheet('Set '+(m.curSet+1)+' · chi batte per primo?'); // O3
 };
 
 // timestamp del video attivo (file o youtube), null se non in modalità video
@@ -783,11 +899,12 @@ $$('[data-q]').forEach(b=>b.onclick=async()=>{
   const m=S.currentMatch,s=m.sets[m.curSet];
   const usPoint=(side==='us'&&gtype==='point')||(side==='opp'&&gtype==='error');
   if(usPoint)s.us++;else s.them++;
-  await put('matches',m);renderScore();
   const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side,gtype,
-    setNum:m.curSet+1,rotation:curSetterZone(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
+    setNum:m.curSet+1,rotation:curSetterZone(),phase:phaseNow(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
+  const so=applyServeAfterPoint(a,usPoint?'us':'opp'); // O3
+  await put('matches',m);renderScore();
   await put('actions',a);renderLog();
-  toast(usPoint?'Punto NOI ✓':'Punto AVV.');
+  toast((usPoint?'Punto NOI ✓':'Punto AVV.')+so);
 });
 
 // ----- rotazione & formazione -----
@@ -802,6 +919,15 @@ $('#setNumBtn').onclick=async()=>{
   m.curSet=(m.curSet+1)%m.sets.length;await put('matches',m);renderScore();toast('Set '+(m.curSet+1));
 };
 $('#lineupBtn').onclick=()=>lineupSheet();
+$('#serveBtn').onclick=()=>serveSheet(); // O3
+$('#fastBtn').onclick=()=>{ // O2
+  S.fast=!S.fast;try{localStorage.setItem('vbscout.fast',S.fast?'1':'0');}catch(_){}
+  renderScout();toast(S.fast?'⚡ Scouting veloce attivo':'Scouting standard');
+};
+$('#samePlayerBtn').onclick=()=>{ // O2
+  if(!S.lastPlayer)return;S.selPlayer=S.lastPlayer;renderScout();
+  scrollToStep(trajRequired()&&!(S.from&&S.to)?$('#stepCourt'):$('#stepOutcome'));
+};
 
 function lineupSheet(){
   const m=S.currentMatch;if(!m)return toast('Nessuna partita attiva');
@@ -841,6 +967,7 @@ $$('#modeSeg button').forEach(b=>b.onclick=()=>{
   S.mode=b.dataset.mode;
   $$('#modeSeg button').forEach(x=>x.classList.toggle('on',x===b));
   $('#videoPanel').classList.toggle('hidden',S.mode!=='video');
+  syncYtTimer(); // O13
 });
 
 // ----- court -----
@@ -850,12 +977,13 @@ function initCourt(){
     const r=c.getBoundingClientRect();
     const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
     if(!S.from){S.from={x,y};$('#courtHint').textContent='Tocca il punto di arrivo';}
-    else if(!S.to){S.to={x,y};$('#courtHint').textContent='Traiettoria pronta — scegli l\'esito ▾';}
+    else if(!S.to){S.to={x,y};$('#courtHint').textContent='Traiettoria pronta — scegli l\'esito ▾';if(S.fast)scrollToStep($('#stepOutcome'));}
     else {S.from={x,y};S.to=null;$('#courtHint').textContent='Tocca il punto di arrivo';}
     drawCourt();
   });
 }
-$('#resetCourt').onclick=()=>{S.from=null;S.to=null;$('#courtHint').textContent='Tocca il punto di partenza dell\'azione';drawCourt();};
+function courtHintIdle(){return trajRequired()?'Tocca il punto di partenza dell\'azione':'Traiettoria opzionale — puoi scegliere subito l\'esito';}
+$('#resetCourt').onclick=()=>{S.from=null;S.to=null;$('#courtHint').textContent=courtHintIdle();drawCourt();};
 // court drawing: vertical court, net in middle. our half = bottom.
 // Geometria condivisa tra disegno e calcolo zone (B4): canvas W×H, margine esterno M (zona "fuori")
 const COURT={W:270,H:480,M:18};
@@ -914,41 +1042,57 @@ function zoneOf(p){
 // ----- record -----
 async function recordAction(outcomeKey){
   if(!S.selPlayer)return toast('Seleziona un giocatore');
-  if(!S.from||!S.to)return toast('Disegna la traiettoria sul campo');
+  // O2: in modalità veloce la traiettoria è facoltativa (tranne battuta/attacco); se iniziata va completata
+  const hasTraj=!!(S.from&&S.to);
+  if(!hasTraj&&(trajRequired()||S.from))return toast(S.from?'Completa la traiettoria o azzerala':'Disegna la traiettoria sul campo');
   const videoTime=currentVideoTime();
   const oc=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===outcomeKey);
+  const m=S.currentMatch;
   const a={
-    id:uid(), matchId:S.currentMatch.id, teamId:S.currentTeam.id,
+    id:uid(), matchId:m.id, teamId:S.currentTeam.id,
     playerId:S.selPlayer, fund:S.selFund, outcome:outcomeKey,
-    from:S.from, to:S.to, fromZone:zoneOf(S.from), toZone:zoneOf(S.to),
+    from:hasTraj?S.from:null, to:hasTraj?S.to:null,
+    fromZone:hasTraj?zoneOf(S.from):null, toZone:hasTraj?zoneOf(S.to):null,
     setCall:S.selFund==='alzata'?(S.setCall||null):null,
-    rotation:curSetterZone(),
-    setNum:S.currentMatch.curSet+1, mode:S.mode, videoTime,
+    rotation:curSetterZone(), phase:phaseNow(), // O3: K1 ricezione / K2 battuta
+    setNum:m.curSet+1, mode:S.mode, videoTime,
     ts:Date.now()
   };
-  await put('actions',a);
   // auto-punteggio: solo se l'esito è terminale (punto o errore)
+  let so='';
   if(oc&&oc.pt){
-    const m=S.currentMatch,s=m.sets[m.curSet];
+    const s=m.sets[m.curSet];
     if(oc.pt==='us')s.us++;else s.them++;
-    await put('matches',m);renderScore();
+    so=applyServeAfterPoint(a,oc.pt); // O3: cambio palla + rotazione automatica
   }
-  // reset trajectory, keep player+fund for fast repeat
+  await put('actions',a);
+  if(oc&&oc.pt){await put('matches',m);renderScore();}
+  // reset traiettoria; O2: ricorda il giocatore per "Stesso giocatore"
+  S.lastPlayer=S.selPlayer;
   S.from=null;S.to=null;
-  $('#courtHint').textContent='Tocca il punto di partenza dell\'azione';
-  drawCourt();renderLog();
+  const fundLbl=FUNDAMENTALS[S.selFund].label;
+  if(S.fast){
+    // O2: pronto per la prossima azione → deseleziona e torna alla scelta del giocatore
+    S.selPlayer=null;renderScout();scrollToStep($('#stepPlayer'));
+  }else{
+    $('#courtHint').textContent=courtHintIdle();
+    drawCourt();renderLog();
+  }
   const ptTxt=oc&&oc.pt?(oc.pt==='us'?' · +1 NOI':' · +1 AVV'):'';
-  toast(`${FUNDAMENTALS[S.selFund].label}: ${oc.lbl}${ptTxt} ✓`);
+  toast(`${fundLbl}: ${oc?oc.lbl:outcomeKey}${ptTxt}${so} ✓`);
 }
 
 async function renderLog(){
-  const acts=(await getByIndex('actions','match',S.currentMatch.id)).sort((a,b)=>b.ts-a.ts);
+  if(!S.currentMatch)return;
+  // O13: l'azione in attesa di eliminazione è nascosta finché non scade l'"Annulla"
+  const acts=(await getByIndex('actions','match',S.currentMatch.id)).filter(a=>a.id!==S.pendingDel?.id).sort((a,b)=>b.ts-a.ts);
   $('#logCount').textContent=acts.length;
   $('#logList').innerHTML=acts.slice(0,14).map(a=>{
     const t=a.mode==='video'&&a.videoTime!=null?fmtTime(a.videoTime):'Set '+a.setNum;
-    const delBtn=`<button class="iconbtn sm" data-da="${a.id}" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button>`;
+    const delBtn=`<button class="iconbtn sm" data-da="${a.id}" aria-label="Elimina azione" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button>`;
+    const ph=a.phase?` <span style="color:var(--mut2);font-size:10px">${a.phase}</span>`:'';
+    const rot=(a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'')+ph;
     if(a.generic){
-      const rot=a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'';
       if(a.gtype==='correction'){
         const sc=(a.delta>0?'+1 ':'−1 ')+(a.side==='us'?'NOI':'AVV');
         return `<div class="logrow"><span class="dot" style="background:var(--mut)"></span>
@@ -965,27 +1109,38 @@ async function renderLog(){
     const fund=FUNDAMENTALS[a.fund];
     const o=fund?fund.outcomes.find(x=>x.k===a.outcome):null;
     const col=OUTCOME_COLOR[o?.cls]||'#888';
-    const rot=a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'';
     const sc=a.setCall?` <span style="color:var(--teal);font-size:10px">${esc(a.setCall)}</span>`:'';
+    const zn=a.fromZone||a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>`:'';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${sc}${rot}
-      <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>
+      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${sc}${rot}${zn}
       <span class="meta">${t}${delBtn}</span></div>`;
   }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
   $$('[data-da]').forEach(b=>b.onclick=async()=>{
-    const a=acts.find(x=>x.id===b.dataset.da);
-    await del('actions',b.dataset.da);
-    // B1: annulla l'effetto dell'azione sul punteggio del suo set
-    const m=S.currentMatch,s=a&&m.sets[a.setNum-1];
-    if(s){
-      const d=actionScoreDelta(a);
-      if(d.us||d.them){
-        s.us=Math.max(0,s.us-d.us);s.them=Math.max(0,s.them-d.them);
-        await put('matches',m);renderScore();
-      }
-    }
-    renderLog();
+    const a=acts.find(x=>x.id===b.dataset.da);if(!a)return;
+    await commitPendingDelete(); // una sola eliminazione in sospeso alla volta
+    S.pendingDel=a;renderLog();
+    toastAction('Azione eliminata','Annulla',
+      ()=>{if(S.pendingDel===a){S.pendingDel=null;renderLog();}},
+      ()=>{if(S.pendingDel===a)commitPendingDelete();});
   });
+}
+// O13: esegue davvero l'eliminazione in sospeso (dopo il timeout dell'"Annulla")
+async function commitPendingDelete(){
+  const a=S.pendingDel;if(!a)return;
+  S.pendingDel=null;
+  const later=(await getByIndex('actions','match',a.matchId)).some(x=>x.ts>a.ts&&x.id!==a.id);
+  await del('actions',a.id);
+  // B1: annulla l'effetto dell'azione sul punteggio del suo set
+  const m=S.matches.find(x=>x.id===a.matchId)||S.currentMatch,s=m&&m.sets&&m.sets[a.setNum-1];
+  let changed=false;
+  if(s){
+    const d=actionScoreDelta(a);
+    if(d.us||d.them){s.us=Math.max(0,s.us-d.us);s.them=Math.max(0,s.them-d.them);changed=true;}
+    // O3: se era l'ultima azione, ripristina anche battuta e rotazione precedenti
+    if(!later&&a.prevServe){s.serve=a.prevServe;if(a.autoRot)m.rotStep=a.prevRotStep;changed=true;}
+  }
+  if(changed)await put('matches',m);
+  if(S.currentMatch?.id===a.matchId)changed?renderScout():renderLog(); // renderScout aggiorna anche griglia in campo
 }
 
 // ----- video -----
@@ -1013,6 +1168,7 @@ $$('#vsrcSeg button').forEach(b=>b.onclick=()=>{
   // pausa la sorgente non attiva
   if(S.vsrc==='yt'){const v=$('#vid');if(v&&!v.paused){v.pause();$('#vPlay').textContent='▶';}}
   if(S.vsrc==='file'&&ytPlayer&&ytPlayer.pauseVideo){ytPlayer.pauseVideo();$('#ytPlay').textContent='▶';}
+  syncYtTimer(); // O13
 });
 
 // ----- YouTube (IFrame API, caricata solo al bisogno) -----
@@ -1041,8 +1197,17 @@ function createYt(id){
     events:{onReady:()=>{$('#ytBar').classList.remove('hidden');startYtTimer();}}
   });
 }
+// O13: il timer del tempo YouTube gira solo se il pannello video è visibile (vista Scout + modalità video + sorgente YT)
+function ytVisible(){return !!ytPlayer&&S.mode==='video'&&S.vsrc==='yt'&&!$('#v-scout').classList.contains('hidden')&&!$('#videoPanel').classList.contains('hidden');}
+function syncYtTimer(){
+  try{ // try: ytTimer (let) potrebbe non essere ancora inizializzato se chiamata al primo show()
+    if(ytVisible()){if(!ytTimer)startYtTimer();}
+    else if(ytTimer){clearInterval(ytTimer);ytTimer=null;}
+  }catch(_){}
+}
 function startYtTimer(){
   clearInterval(ytTimer);
+  if(!ytVisible()){ytTimer=null;return;}
   ytTimer=setInterval(()=>{
     if(ytPlayer&&ytPlayer.getCurrentTime){
       $('#ytTime').textContent=fmtTime(ytPlayer.getCurrentTime())+' / '+fmtTime(ytPlayer.getDuration());
@@ -1212,7 +1377,7 @@ $('#importFile').onchange=e=>{
   rd.onload=async()=>{
     try{
       const d=JSON.parse(rd.result);if(d.app!=='vbscout')throw 0;
-      if(!confirm('Ripristinare il backup? I dati attuali verranno uniti.'))return;
+      if(!await confirmSheet('Ripristinare il backup?','I dati del file verranno uniti a quelli attuali (i record con lo stesso ID vengono sovrascritti).','Ripristina',false))return;
       for(const t of d.teams||[])await put('teams',t);
       for(const p of d.players||[])await put('players',p);
       for(const m of d.matches||[])await put('matches',m);
