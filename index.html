@@ -216,6 +216,22 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 #ytWrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .vbar{display:flex;align-items:center;gap:8px;margin-top:8px}
 .vtime{font-variant-numeric:tabular-nums;font-size:13px;color:var(--mut);min-width:90px;text-align:center}
+.vsrc-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.vsrc-row .seg{min-width:0}
+#splitBtn{white-space:nowrap;flex:none}
+#splitBtn[aria-pressed="true"]{background:var(--acc);color:#1a0f08;border-color:var(--acc)}
+/* layout video affiancato (split-screen): attivo solo da 600px in su */
+@media (max-width:599px){#splitBtn{display:none}}
+@media (min-width:600px){
+  body.scout-split .wrap{max-width:1280px}
+  #v-scout.layout-split.video-on .scout-body{display:flex;flex-direction:row;flex-wrap:nowrap;gap:14px;align-items:flex-start}
+  #v-scout.layout-split.video-on .scol{overflow-y:auto;max-height:var(--split-h,calc(100dvh - 230px));overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  #v-scout.layout-split.video-on .scol-video{flex:0 0 50%;max-width:400px;position:sticky;top:var(--split-top,0px)}
+  #v-scout.layout-split.video-on .scol-main{flex:1 1 auto;min-width:0;padding-right:2px}
+  #v-scout.layout-split.video-on #ytWrap{max-height:280px}
+  #v-scout.layout-split.video-on #vid{max-height:280px;object-fit:contain}
+  #v-scout.layout-split.video-on .courtwrap{max-width:300px}
+}
 
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line2);color:var(--txt);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:80;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5)}
@@ -332,11 +348,16 @@ video{width:100%;border-radius:14px;background:#000;display:block}
       <button data-mode="video">▶ VIDEO</button>
     </div>
 
+    <div class="scout-body" id="scoutBody">
+    <div class="scol scol-video" id="scoutColVideo">
     <!-- video panel -->
     <div class="card hidden" id="videoPanel" style="padding:12px">
-      <div class="seg" id="vsrcSeg" style="margin-bottom:10px">
-        <button data-vsrc="file" class="on">📁 File locale</button>
-        <button data-vsrc="yt">▶ YouTube</button>
+      <div class="vsrc-row">
+        <div class="seg grow" id="vsrcSeg">
+          <button data-vsrc="file" class="on">📁 File locale</button>
+          <button data-vsrc="yt">▶ YouTube</button>
+        </div>
+        <button class="chip sm" id="splitBtn" aria-pressed="false" aria-label="Affianca video e scout" title="Affianca video e scout">⧉ Affianca</button>
       </div>
 
       <!-- source: local file -->
@@ -377,7 +398,9 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <div style="font-size:11px;color:var(--mut2);margin-top:8px;line-height:1.4">Le azioni vengono agganciate al minuto del video. Per fluidità, metti in pausa con ⏸ prima di taggare. Funziona al meglio con l'app pubblicata online (GitHub Pages).</div>
       </div>
     </div>
+    </div><!-- /scol-video -->
 
+    <div class="scol scol-main" id="scoutColMain">
     <!-- quick generic points -->
     <div class="card" id="quickPanel">
       <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:10px">Punto rapido · aggiorna il punteggio</div>
@@ -423,6 +446,8 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <!-- live log -->
     <div class="sec-title">Azioni registrate <span class="tag" id="logCount">0</span></div>
     <div id="logList"></div>
+    </div><!-- /scol-main -->
+    </div><!-- /scout-body -->
   </div>
 </section>
 
@@ -474,6 +499,11 @@ video{width:100%;border-radius:14px;background:#000;display:block}
   <div class="sec-title" id="kpiTitle">Sintesi squadra</div>
   <div class="kpis" id="teamKpis"></div>
 
+  <div id="setStatsWrap" class="hidden">
+    <div class="sec-title" id="setStatsTitle">📊 Analisi per set</div>
+    <div class="card" style="overflow-x:auto" id="setStatsBox"></div>
+  </div>
+
   <div class="sec-title">Per fondamentale · metriche standard DataVolley</div>
   <div class="card" style="overflow-x:auto" id="fundStatsBox"></div>
 
@@ -482,6 +512,10 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
   <div class="sec-title">Per giocatore</div>
   <div class="card" style="overflow-x:auto" id="playerStatsBox"></div>
+  <div class="hidden" id="playerSetWrap">
+    <div class="sec-title" id="playerSetTitle">Andamento per set</div>
+    <div class="card" style="overflow-x:auto" id="playerSetBox"></div>
+  </div>
 
   <div class="sec-title hidden" id="callStatsTitle">Distribuzione alzate</div>
   <div class="card hidden" id="callStatsBox"></div>
@@ -661,6 +695,7 @@ function show(v){
   if(v==='roster') renderRoster();
   if(v==='scout')  renderScout();
   if(v==='stats')  renderStats();
+  applyVideoLayout();
   syncYtTimer();
   window.scrollTo(0,0);
 }
@@ -1013,6 +1048,9 @@ function renderSubType(){
 // scroll a uno step tenendo conto di top bar + scorebar sticky
 function scrollToStep(el){
   if(!el)return;
+  // split-screen: scorre la colonna scout invece della pagina
+  const col=splitActive()&&el.closest('.scol');
+  if(col){col.scrollTo({top:el.getBoundingClientRect().top-col.getBoundingClientRect().top+col.scrollTop-8,behavior:'smooth'});return;}
   const off=(document.querySelector('.top')?.offsetHeight||0)+($('#scoreBar')?.offsetHeight||0)+12;
   window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-off,behavior:'smooth'});
 }
@@ -1217,8 +1255,42 @@ $$('#modeSeg button').forEach(b=>b.onclick=()=>{
   S.mode=b.dataset.mode;
   $$('#modeSeg button').forEach(x=>x.classList.toggle('on',x===b));
   $('#videoPanel').classList.toggle('hidden',S.mode!=='video');
+  applyVideoLayout();
   syncYtTimer(); // O13
 });
+
+// ----- layout video affiancato (split-screen) -----
+// preferenza persistente: 'split' | 'normal'. Sotto i 600px lo split è disattivato via CSS.
+const SPLIT_MIN_W=600;
+function getVideoLayout(){try{return localStorage.getItem('vbs_videoLayout')==='split'?'split':'normal';}catch(_){return 'normal';}}
+function applyVideoLayout(){
+  const split=getVideoLayout()==='split';
+  const sc=$('#v-scout');
+  sc.classList.toggle('layout-split',split);
+  sc.classList.toggle('video-on',S.mode==='video');
+  const active=split&&S.mode==='video'&&!sc.classList.contains('hidden')&&window.innerWidth>=SPLIT_MIN_W;
+  document.body.classList.toggle('scout-split',active);
+  const b=$('#splitBtn');
+  if(b){b.textContent=split?'↕ Colonna':'⧉ Affianca';b.setAttribute('aria-pressed',String(split));
+    const lbl=split?'Torna al layout in colonna':'Affianca video e scout';b.setAttribute('aria-label',lbl);b.title=lbl;}
+  if(active){
+    // altezza disponibile per le colonne: viewport − header − barra punteggio − selettore modalità − nav
+    const top=(document.querySelector('.top')?.offsetHeight||0);
+    const above=top+($('#scoreBar')?.offsetHeight||0)+($('#modeSeg')?.offsetHeight||0)+24;
+    const nav=$('#nav')?.offsetHeight||0;
+    sc.style.setProperty('--split-h',Math.max(260,window.innerHeight-above-nav-16)+'px');
+    sc.style.setProperty('--split-top',top+'px');
+  }
+}
+function splitActive(){return document.body.classList.contains('scout-split');}
+$('#splitBtn').onclick=()=>{
+  const next=getVideoLayout()==='split'?'normal':'split';
+  try{localStorage.setItem('vbs_videoLayout',next);}catch(_){}
+  applyVideoLayout();
+  if(next==='split'&&window.innerWidth<SPLIT_MIN_W)toast('Schermo troppo stretto: lo split si attiva da 600px in su');
+  else toast(next==='split'?'Video affiancato allo scout':'Layout in colonna');
+};
+let _splitRz;window.addEventListener('resize',()=>{clearTimeout(_splitRz);_splitRz=setTimeout(applyVideoLayout,120);});
 
 // ----- court -----
 function initCourt(){
@@ -1601,6 +1673,7 @@ async function playAction(id){
   $$('.logrow.hl').forEach(r=>r.classList.remove('hl'));
   const row=$(`#logList [data-seek="${id}"]`);row&&row.closest('.logrow').classList.add('hl');
   // scorre al player tenendo conto di header e barra punteggio sticky
+  if(splitActive()){$('#scoutColVideo').scrollTo({top:0,behavior:'smooth'});return;}
   const off=(document.querySelector('.top')?.offsetHeight||0)+($('#scoreBar')?.offsetHeight||0)+8;
   window.scrollTo({top:$('#videoPanel').getBoundingClientRect().top+window.scrollY-off,behavior:'smooth'});
 }
@@ -1720,6 +1793,35 @@ const FUND_COLS={
   muro:     [['Pt',m=>m.c['#']],['T.fav',m=>m.c['+']],['T.sfav',m=>m.c['-']],['Err',m=>m.c['=']],['Fav%',m=>fmtPct(m.favPct)],['Pt/set',m=>m.perSet??'–',true]],
   alzata:   [['#',m=>m.c['#']],['+',m=>m.c['+']],['Err',m=>m.c['=']],['Prf%',m=>fmtPct(m.prfPct)],['Pos%',m=>fmtPct(m.posPct),true]],
 };
+// =========================================================
+//  ANALISI PER SET (stats + report)
+// =========================================================
+const HAS_DIFESA=!!FUNDAMENTALS.difesa;   // colonna "Difese+" solo se il fondamentale esiste
+// righe per set di una o più partite. pid = filtro giocatore opzionale (metriche tecniche)
+function setBreakdown(matches,acts,pid){
+  const rows=[];
+  for(const m of matches){
+    const sets=m.sets||[];
+    const maxSet=Math.max(sets.length,...acts.filter(a=>a.matchId===m.id).map(a=>a.setNum||0),0);
+    for(let i=0;i<maxSet;i++){
+      const s=sets[i]||{us:0,them:0};
+      const sa=acts.filter(a=>a.matchId===m.id&&a.setNum===i+1);
+      if(!sa.length&&(s.us||0)+(s.them||0)===0)continue;
+      let sk=sa.filter(a=>!a.generic);if(pid)sk=sk.filter(a=>a.playerId===pid);
+      const byF=f=>sk.filter(a=>a.fund===f);
+      const at=fundMetrics('attacco',byF('attacco'),1),rc=fundMetrics('ricezione',byF('ricezione'),1);
+      const cnt=(f,o)=>sk.filter(a=>a.fund===f&&o.includes(a.outcome)).length;
+      const genUsErr=pid?0:sa.filter(a=>a.generic&&a.side==='us'&&a.gtype==='error').length;
+      const oppErr=sa.filter(a=>a.generic&&a.side==='opp'&&a.gtype==='error').length;
+      rows.push({match:m,set:i+1,us:s.us||0,them:s.them||0,n:sk.length,
+        ace:cnt('battuta',['#']),serr:cnt('battuta',['=']),atkPt:cnt('attacco',['#']),
+        kill:at.n?at.killPct:null,atkN:at.n,recPos:rc.n?rc.posPct:null,recN:rc.n,
+        blk:cnt('muro',['#']),dig:HAS_DIFESA?cnt('difesa',['#','+']):null,
+        ourErr:sk.filter(a=>a.outcome==='='||a.outcome==='/').length+genUsErr,oppErr,acts:sa});
+    }
+  }
+  return rows;
+}
 async function loadStatData(matchId){
   const matches=matchId==='all'?S.matches.filter(m=>m.teamId===S.currentTeam.id):S.matches.filter(m=>m.id===matchId);
   let acts=[];for(const m of matches)acts=acts.concat(await getByIndex('actions','match',m.id));
@@ -1728,7 +1830,7 @@ async function loadStatData(matchId){
 function kpi(v,l,color){return `<div class="kpi"><div class="v" style="${color?'color:'+color:''}">${v}</div><div class="l">${l}</div></div>`;}
 
 async function computeStats(){
-  if(!S.currentTeam){$('#teamKpis').innerHTML='';$('#fundStatsBox').innerHTML='';$('#pxfBox').innerHTML='';$('#playerStatsBox').innerHTML='<div class="empty">Nessuna squadra</div>';$('#rotStatsBox').innerHTML='';$('#callStatsBox').innerHTML='';return;}
+  if(!S.currentTeam){$('#teamKpis').innerHTML='';$('#fundStatsBox').innerHTML='';$('#pxfBox').innerHTML='';$('#playerStatsBox').innerHTML='<div class="empty">Nessuna squadra</div>';$('#rotStatsBox').innerHTML='';$('#callStatsBox').innerHTML='';$('#setStatsWrap').classList.add('hidden');$('#playerSetWrap').classList.add('hidden');return;}
   const seq=++statSeq; // B15: scarta i risultati di richieste superate
   const matchId=$('#statMatch').value;
   const {matches,acts}=await loadStatData(matchId);
@@ -1775,6 +1877,21 @@ async function computeStats(){
     k+=`<div class="kpi" style="grid-column:1/-1"><div class="v" style="font-size:22px">NOI ${fmt(net('us'))} <span style="color:var(--mut)">·</span> AVV ${fmt(net('opp'))}</div><div class="l">Correzioni manuali del punteggio (${corrections.length}) · saldo netto</div></div>`;
   }
   $('#teamKpis').innerHTML=k;
+
+  // ---- analisi per set (solo partita singola) ----
+  const single=matchId!=='all'?matches[0]:null;
+  const sRows=single?setBreakdown([single],acts,statPlayer==='all'?null:statPlayer).filter(r=>r.acts.length):[];
+  $('#setStatsWrap').classList.toggle('hidden',!sRows.length);
+  if(sRows.length){
+    $('#setStatsTitle').textContent=`📊 Set per set · vs ${single.opponent}`+(pl?` · #${pl.number} ${pl.name}`:'');
+    $('#setStatsBox').innerHTML=`<table class="settab"><thead><tr><th>Set</th><th>Punteggio</th><th>Ace</th><th>Err.Batt</th><th>Kill%</th><th>Ric.Pos%</th><th>Muri</th>${HAS_DIFESA?'<th>Difese+</th>':''}<th>Err.Nostri</th></tr></thead><tbody>${sRows.map(r=>`
+      <tr><td><b>${r.set}</b></td><td style="font-weight:800;color:${r.us>r.them?'var(--good)':r.us<r.them?'var(--bad)':'var(--txt)'}">${r.us}-${r.them}</td>
+      <td style="color:var(--good)">${r.ace}</td><td style="color:var(--bad)">${r.serr}</td>
+      <td>${fmtPct(r.kill)}${r.atkN?`<small style="color:var(--mut2)"> /${r.atkN}</small>`:''}</td>
+      <td>${fmtPct(r.recPos)}${r.recN?`<small style="color:var(--mut2)"> /${r.recN}</small>`:''}</td>
+      <td style="color:var(--acc2)">${r.blk}</td>${HAS_DIFESA?`<td>${r.dig}</td>`:''}<td style="color:var(--bad)">${r.ourErr}</td></tr>`).join('')}</tbody></table>
+      <div style="font-size:11px;color:var(--mut2);margin-top:8px">Kill% e Ric.Pos% calcolati sulle sole azioni del set (piccolo = n° azioni) · Err.Nostri = errori (=) e murati (/)${pl?'':' + errori/falli generici'}</div>`;
+  }
 
   // ---- tabella per fondamentale ----
   const fk=statFund==='all'?FUND_KEYS:[statFund];
@@ -1863,6 +1980,9 @@ async function computeStats(){
     }).join('')}</tbody></table>`:`<div class="empty" style="padding:16px">Nessuna ${isB?'battuta':'azione d\'attacco'} per questo filtro</div>`;
   }
 
+  // ---- andamento per set del giocatore/squadra sul fondamentale selezionato ----
+  renderPlayerSetTrend(single,skill,pl);
+
   // ---- per giocatore ----
   if(!skill.length){$('#playerStatsBox').innerHTML='<div class="empty"><div class="big">📊</div>Nessuna azione tecnica per questo filtro</div>';return;}
   const rowPls=pl?[pl]:pls;
@@ -1887,6 +2007,26 @@ async function computeStats(){
     $('#playerStatsBox').innerHTML=`<table><thead><tr><th class="pl">Giocatore</th><th>Tot</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}<th title="Rivedi le azioni in video">▶</th></tr></thead><tbody>${rows.map(r=>`
       <tr><td class="pl">#${r.p.number} ${esc(r.p.name)}</td><td>${r.m.n}</td>${cols.map(c=>`<td style="${c[2]?'font-weight:800;color:'+effColor(typeof r.m.main==='number'?r.m.main:null):''}">${c[1](r.m)}</td>`).join('')}<td>${r.vids.length?`<button class="vlink" data-clips="${r.vids.join(',')}" aria-label="Rivedi ${r.vids.length} azioni in video">▶ ${r.vids.length}</button>`:'<span style="color:var(--mut2)">—</span>'}</td></tr>`).join('')}</tbody></table>`;
   }
+}
+
+// tabella "Andamento per set" per un singolo fondamentale (giocatore selezionato o squadra)
+function renderPlayerSetTrend(single,skill,pl){
+  const show=statFund!=='all'&&skill.length>0;
+  $('#playerSetWrap').classList.toggle('hidden',!show);
+  if(!show)return;
+  // partita singola → set della partita; tutte le partite → set N aggregato su tutte
+  const keys=[...new Set(skill.map(a=>a.setNum||1))].sort((a,b)=>a-b);
+  const cols=FUND_COLS[statFund];
+  const who=pl?`#${pl.number} ${pl.name}`:'Squadra';
+  $('#playerSetTitle').textContent=`Andamento per set · ${FUNDAMENTALS[statFund].label} · ${who}`;
+  const rows=keys.map(n=>{
+    const sa=skill.filter(a=>(a.setNum||1)===n);
+    const m=fundMetrics(statFund,sa,single?1:new Set(sa.map(a=>a.matchId)).size);
+    const sc=single&&single.sets&&single.sets[n-1]?`${single.sets[n-1].us}-${single.sets[n-1].them}`:'';
+    return `<tr><td class="pl">Set ${n}${sc?` <small style="color:var(--mut2)">${sc}</small>`:''}</td><td>${m.n}</td>${cols.map(c=>`<td style="${c[2]?'font-weight:800;color:'+effColor(typeof m.main==='number'?m.main:null):''}">${c[1](m)}</td>`).join('')}</tr>`;
+  }).join('');
+  $('#playerSetBox').innerHTML=`<table><thead><tr><th class="pl">Set</th><th>Tot</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+    ${single?'':'<div style="font-size:11px;color:var(--mut2);margin-top:8px">Tutte le partite: ogni riga aggrega lo stesso numero di set su tutte le gare</div>'}`;
 }
 
 // =========================================================
@@ -1931,17 +2071,23 @@ async function buildReportHtml(matchId){
   };
   const pRows=pls.map(p=>{const pa=skill.filter(a=>a.playerId===p.id);return pa.length?pRow(`<td class="n">${p.number}</td><td class="l">${e(p.name)}</td>`,pa):'';}).join('');
   const totRow=skill.length?pRow('<td class="n"></td><td class="l"><b>SQUADRA</b></td>',skill).replace('<tr>','<tr class="tot">'):'';
-  // per set
-  const setRows=[];
-  for(const m of matches)(m.sets||[]).forEach((s,i)=>{
-    const sa=acts.filter(a=>a.matchId===m.id&&a.setNum===i+1);
-    if(!sa.length&&s.us+s.them===0)return;
-    const sk=sa.filter(a=>!a.generic);
-    const cnt=(f,o)=>sk.filter(a=>a.fund===f&&a.outcome===o).length;
-    const oppErr=sa.filter(a=>a.generic&&a.side==='opp'&&a.gtype==='error').length;
-    const ourErr=sk.filter(a=>a.outcome==='='||a.outcome==='/').length+sa.filter(a=>a.generic&&a.side==='us'&&a.gtype==='error').length;
-    setRows.push(`<tr>${single?'':`<td class="l">vs ${e(m.opponent)}</td>`}<td>${i+1}</td><td><b>${s.us}-${s.them}</b></td><td>${cnt('battuta','#')}</td><td>${cnt('battuta','=')}</td><td>${cnt('attacco','#')}</td><td>${cnt('muro','#')}</td><td>${oppErr}</td><td>${ourErr}</td></tr>`);
-  });
+  // per set: punteggio + metriche tecniche del set
+  const sb=setBreakdown(matches,acts,null);
+  const setRows=sb.map(r=>`<tr>${single?'':`<td class="l">vs ${e(r.match.opponent)}</td>`}<td>${r.set}</td><td><b>${r.us}-${r.them}</b></td><td>${r.ace}</td><td>${r.serr}</td><td>${r.atkPt}</td><td>${fmtPct(r.kill)}</td><td>${fmtPct(r.recPos)}</td><td>${r.blk}</td>${HAS_DIFESA?`<td>${r.dig}</td>`:''}<td>${r.oppErr}</td><td>${r.ourErr}</td></tr>`);
+  // dettaglio giocatori per set: N°, nome, fondamentale, tot, punti, errori
+  const setDetail=sb.map(r=>{
+    const sk=r.acts.filter(a=>!a.generic);if(!sk.length)return '';
+    const body=pls.map(p=>{
+      const pa=sk.filter(a=>a.playerId===p.id);if(!pa.length)return '';
+      const fs=FUND_KEYS.filter(f=>pa.some(a=>a.fund===f));
+      return fs.map((f,j)=>{const fa=pa.filter(a=>a.fund===f);
+        const pts=fa.filter(a=>actionPoint(a)==='us').length,err=fa.filter(a=>a.outcome==='='||a.outcome==='/').length;
+        return `<tr${j===0?' class="pfirst"':''}>${j===0?`<td class="n" rowspan="${fs.length}">${p.number}</td><td class="l" rowspan="${fs.length}">${e(p.name)}</td>`:''}<td class="l">${FUNDAMENTALS[f].label}</td><td>${fa.length}</td><td>${pts||''}</td><td>${err||''}</td></tr>`;}).join('');
+    }).join('');
+    if(!body)return '';
+    return `<div class="setbox"><h3>${single?'':`vs ${e(r.match.opponent)} · `}Set ${r.set} <span>${r.us}-${r.them}</span></h3>
+      <table><thead><tr><th>N°</th><th>Giocatore</th><th>Fondamentale</th><th>Tot</th><th>Punti</th><th>Errori</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  }).join('');
   // rotazioni
   const rot=[];for(let z=1;z<=6;z++){const ra=acts.filter(a=>a.rotation===z);if(!ra.length)continue;
     const w=ra.filter(a=>actionPoint(a)==='us').length,l=ra.filter(a=>actionPoint(a)==='opp').length;
@@ -1956,7 +2102,8 @@ h1{font-size:24px;margin:0}h1 .vs{color:#888;font-weight:400}h2{font-size:13px;l
 .sub{color:#555;margin-top:4px}.res{margin-top:8px;font-size:15px}.res b{font-size:22px;margin-right:10px}.res span{color:#444}
 table{width:100%;border-collapse:collapse;margin-top:4px}th,td{border:1px solid #ccc;padding:4px 5px;text-align:center}th{background:#f2f2f2;font-size:10px;text-transform:uppercase}
 td.l{text-align:left}td.n{font-weight:800;width:30px}td.pts{font-weight:800;background:#fff4ec}.sep{border-left:2px solid #555}tr.tot td{font-weight:800;background:#f7f7f7;border-top:2px solid #555}
-.grp th{background:#222;color:#fff}.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.legend{color:#555;font-size:10.5px;line-height:1.5}
+.grp th{background:#222;color:#fff}.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.setbox{break-inside:avoid;page-break-inside:avoid}.setbox h3{font-size:12px;margin:6px 0 4px}.setbox h3 span{color:#ff6a2b;margin-left:6px}tr.pfirst td{border-top:2px solid #999}.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.legend{color:#555;font-size:10.5px;line-height:1.5}
 .noprint{position:fixed;top:14px;right:14px;background:#ff6a2b;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer}
 @media print{.noprint{display:none}body{padding:0}}
 </style></head><body>
@@ -1968,12 +2115,14 @@ ${pRows?`<table><thead><tr class="grp"><th colspan="3"></th><th colspan="4" clas
 <tbody>${pRows}${totRow}</tbody></table>`:'<p>Nessuna azione tecnica registrata.</p>'}
 <h2>Sintesi per fondamentale</h2>
 ${fundTable?`<table><thead><tr><th>Fondamentale</th><th>Tot</th><th>#</th><th>+</th><th>−</th><th>/</th><th>=</th><th>Metriche</th></tr></thead><tbody>${fundTable}</tbody></table>`:'<p>—</p>'}
-<div class="two"><div><h2>Andamento per set</h2>
-${setRows.length?`<table><thead><tr>${single?'':'<th>Partita</th>'}<th>Set</th><th>Punteggio</th><th>Ace</th><th>Err batt.</th><th>Att. punto</th><th>Muri pt</th><th>Err. avv.</th><th>Err. nostri</th></tr></thead><tbody>${setRows.join('')}</tbody></table>`:'<p>—</p>'}</div>
-<div><h2>Rotazioni</h2>${rot.length?`<table><thead><tr><th>Rot.</th><th>Punti</th><th>Subiti</th><th>Saldo</th></tr></thead><tbody>${rot.join('')}</tbody></table>`:'<p>Formazione non impostata.</p>'}</div></div>
+<h2>Andamento per set</h2>
+${setRows.length?`<table><thead><tr>${single?'':'<th>Partita</th>'}<th>Set</th><th>Punteggio</th><th>Ace</th><th>Err batt.</th><th>Att. punto</th><th>Kill%</th><th>Ric. pos%</th><th>Muri pt</th>${HAS_DIFESA?'<th>Difese+</th>':''}<th>Err. avv.</th><th>Err. nostri</th></tr></thead><tbody>${setRows.join('')}</tbody></table>`:'<p>—</p>'}
+${setDetail?`<h2>Dettaglio giocatori per set</h2><div class="setgrid">${setDetail}</div>`:''}
+<div class="two"><div><h2>Rotazioni</h2>${rot.length?`<table><thead><tr><th>Rot.</th><th>Punti</th><th>Subiti</th><th>Saldo</th></tr></thead><tbody>${rot.join('')}</tbody></table>`:'<p>Formazione non impostata.</p>'}</div><div></div></div>
 <h2>Legenda</h2><div class="legend">
 <b>Battuta</b>: Eff% = (ace − errori) / tot · <b>Ricezione</b>: Pos% = (# + +) / tot, Prf% = # / tot, Eff% = (2·# + 1·+ − 1·/ − 2·=) / (2·tot) ·
 <b>Attacco</b>: Kill% = punti / tot, Eff% = (punti − errori − murati) / tot, T.muro = tocchi di muro rigiocati (v) · <b>Difesa</b>: Pos% = (# + +) / tot · <b>Muro</b>: punti (#), T.fav / T.sfav = tocchi favorevoli / sfavorevoli · <b>Alzata</b>: Pos% = (# + +) / tot ·
+Kill% e Ric. pos% per set = calcolati sulle sole azioni del set${HAS_DIFESA?' · Difese+ = difese con esito # o +':''} ·
 Pt giocatore = ace + attacchi punto + muri punto · Err. nostri = errori (=) e murati (/) nelle azioni tecniche + errori/falli generici.
 </div></body></html>`;
 }
