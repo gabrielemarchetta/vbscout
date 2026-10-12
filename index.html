@@ -401,6 +401,12 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <div class="sec-title" id="stepOutcome">4 · Esito</div>
     <div class="card"><div class="outs" id="outcomeGrid"></div></div>
 
+    <!-- step 4b: sottotipo opzionale dell'ultima azione (battuta / attacco) -->
+    <div class="card hidden" id="subTypeCard" aria-live="polite">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><b id="subTypeTitle" style="font-size:13px">Tipo</b><span id="subTypeInfo" style="font-size:11px;color:var(--mut2)"></span></div>
+      <div class="chips" id="subTypeChips"></div>
+    </div>
+
     <!-- live log -->
     <div class="sec-title">Azioni registrate <span class="tag" id="logCount">0</span></div>
     <div id="logList"></div>
@@ -466,6 +472,8 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
   <div class="sec-title hidden" id="callStatsTitle">Distribuzione alzate</div>
   <div class="card hidden" id="callStatsBox"></div>
+  <div class="sec-title hidden" id="subStatsTitle">Distribuzione tipo servizio</div>
+  <div class="card hidden" id="subStatsBox"></div>
 
   <div class="sec-title">Per rotazione (P = zona palleggiatore)</div>
   <div class="card" style="overflow-x:auto" id="rotStatsBox"></div>
@@ -514,17 +522,25 @@ const FUNDAMENTALS = {
   ricezione: {label:'Ricezione',short:'R', outcomes:[
     {k:'#',lbl:'Perfetta',     cls:'g', w:2,  pt:null},
     {k:'+',lbl:'Positiva',     cls:'p', w:1,  pt:null},
-    {k:'-',lbl:'Scarsa',       cls:'n', w:0,  pt:null},
+    {k:'-',lbl:'Negativa',     cls:'n', w:0,  pt:null},
+    {k:'/',lbl:'Freeball',     cls:'b', w:-1, pt:'opp'},   // ricezione che regala freeball → punto avversario
     {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   attacco:   {label:'Attacco',  short:'A', outcomes:[
     {k:'#',lbl:'Punto',        cls:'g', w:2,  pt:'us'},
     {k:'+',lbl:'Positivo',     cls:'p', w:1,  pt:null},
     {k:'-',lbl:'Difeso',       cls:'n', w:0,  pt:null},
+    {k:'v',lbl:'Tocco muro',   cls:'n', w:0,  pt:null},    // tocca il muro ma resta in gioco
     {k:'/',lbl:'Murato',       cls:'b', w:-1, pt:'opp'},
+    {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
+  difesa:    {label:'Difesa',   short:'D', outcomes:[
+    {k:'#',lbl:'Perfetta',     cls:'g', w:2,  pt:null},
+    {k:'+',lbl:'Positiva',     cls:'p', w:1,  pt:null},
+    {k:'-',lbl:'Parziale',     cls:'n', w:0,  pt:null},
     {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   muro:      {label:'Muro',     short:'M', outcomes:[
     {k:'#',lbl:'Punto',        cls:'g', w:2,  pt:'us'},
-    {k:'+',lbl:'Tocco utile',  cls:'p', w:1,  pt:null},
+    {k:'+',lbl:'Tocco fav.',   cls:'p', w:1,  pt:null},    // resta dalla nostra parte → difendiamo
+    {k:'-',lbl:'Tocco sfav.',  cls:'n', w:0,  pt:null},    // torna a loro → continuano l'attacco
     {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   alzata:    {label:'Alzata',   short:'P', outcomes:[
     {k:'#',lbl:'Perfetta',     cls:'g', w:2,  pt:null},
@@ -533,6 +549,23 @@ const FUNDAMENTALS = {
     {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
 };
 const SET_CALLS = ['Posto 4','Primo tempo','Sette','Posto 2','Pipe','Seconda linea'];
+// sottotipi opzionali, scelti dopo l'esito (salvati su azione.serveType / azione.attackType)
+const SUBTYPES = {
+  battuta:{field:'serveType', title:'Tipo battuta', list:[
+    {k:'float',      ico:'🏐', lbl:'Float'},
+    {k:'saltofloat', ico:'💨', lbl:'Salto-float'},
+    {k:'salto',      ico:'⚡', lbl:'Salto'},
+    {k:'corsa',      ico:'🤾', lbl:'Corsa'}]},
+  attacco:{field:'attackType', title:'Tipo attacco', list:[
+    {k:'attacco',    ico:'💥', lbl:'Attacco'},
+    {k:'pallonetto', ico:'🤏', lbl:'Pallonetto'},
+    {k:'primotempo', ico:'⚡', lbl:'Primo tempo'},
+    {k:'pipe',       ico:'🔄', lbl:'Pipe'}]},
+};
+function subtypeOf(a){
+  for(const f in SUBTYPES){const st=SUBTYPES[f];if(a.fund===f&&a[st.field])return st.list.find(x=>x.k===a[st.field])||null;}
+  return null;
+}
 
 const FUND_KEYS = Object.keys(FUNDAMENTALS);
 const OUTCOME_COLOR = {g:'#23d3b3',p:'#7bd86b',n:'#ffb43d',b:'#ff4d5e'};
@@ -770,13 +803,15 @@ function matchSheet(m){
 // =========================================================
 //  ROSTER
 // =========================================================
+// nessun limite sul numero di liberi: tutti i giocatori della squadra (anche 2 liberi) compaiono in rosa, scout e statistiche
 function teamPlayers(){return S.players.filter(p=>p.teamId===S.currentTeam?.id).sort((a,b)=>a.number-b.number);}
+const isLibero=p=>/^libero/i.test(p?.role||'');
 function renderRoster(){
   $('#rosterTeamName').textContent=S.currentTeam?.name||'—';
   const pls=teamPlayers();
   const g=$('#rosterGrid');
   $('#rosterEmpty').classList.toggle('hidden',pls.length>0);
-  g.innerHTML=pls.map(p=>`<div class="pcell" data-del="${p.id}"><div class="num">${p.number}</div><div class="nm">${esc(p.name)}</div><div class="rl">${esc(p.role.slice(0,4))}</div></div>`).join('');
+  g.innerHTML=pls.map(p=>`<div class="pcell" data-del="${p.id}">${isLibero(p)?'<span class="zb">L</span>':''}<div class="num">${p.number}</div><div class="nm">${esc(p.name)}</div><div class="rl">${esc((p.role||'').slice(0,4))}</div></div>`).join('');
   $$('#rosterGrid .pcell').forEach(c=>c.onclick=()=>{
     const p=S.players.find(x=>x.id===c.dataset.del);
     modal(`<h2 style="margin:0 0 6px;font-size:22px">#${p.number} ${esc(p.name)}</h2><p style="color:var(--mut);margin:0 0 16px">${esc(p.role)}</p>
@@ -834,11 +869,13 @@ function renderScout(){
   $('#samePlayerBtn').classList.toggle('hidden',!lp);
   if(lp)$('#samePlayerBtn').textContent=`↺ Stesso giocatore · #${lp.number} ${lp.name}`;
   const req=trajRequired();
-  $('#courtTag').textContent=req?'tocca 2 punti':'opzionale';
-  if(!S.from)$('#courtHint').textContent=req?'Tocca il punto di partenza dell\'azione':'Traiettoria opzionale — puoi scegliere subito l\'esito';
+  $('#courtTag').textContent=S.selFund==='difesa'?'1 punto · opzionale':req?'tocca 2 punti':'opzionale';
+  if(!S.from)$('#courtHint').textContent=courtHintIdle();
   // fundamentals
   $('#fundChips').innerHTML=FUND_KEYS.map(k=>`<button class="chip ${S.selFund===k?'on':''}" data-f="${k}" aria-pressed="${S.selFund===k}">${FUNDAMENTALS[k].label}</button>`).join('');
   $$('#fundChips .chip').forEach(c=>c.onclick=()=>{
+    // la difesa usa un solo punto d'impatto: entrando/uscendo dalla difesa azzera il campo
+    if((S.selFund==='difesa')!==(c.dataset.f==='difesa')){S.from=null;S.to=null;}
     S.selFund=c.dataset.f;renderScout();
     // O2: avanza allo step successivo (alzata: resta per scegliere la destinazione)
     if(S.fast&&S.selFund!=='alzata')scrollToStep(trajRequired()&&!(S.from&&S.to)?$('#stepCourt'):$('#stepOutcome'));
@@ -855,6 +892,7 @@ function renderScout(){
   const outs=FUNDAMENTALS[S.selFund].outcomes;
   $('#outcomeGrid').innerHTML=outs.map(o=>`<button class="out ${o.cls}" data-o="${o.k}"><span class="badge">${o.k}</span><span class="lbl">${o.lbl}</span></button>`).join('');
   $$('#outcomeGrid .out').forEach(b=>b.onclick=()=>recordAction(b.dataset.o));
+  renderSubType();
   // court
   if(!courtCtx)initCourt();
   drawCourt();
@@ -874,11 +912,36 @@ function curZonePlayers(){
 function fieldPlayerMap(){
   const zp=curZonePlayers(),map=new Map();if(!zp)return map;
   [4,3,2,5,6,1].forEach((z,i)=>{if(zp[z])map.set(zp[z],{ord:i,lbl:'Z'+z});});
-  const lib=S.currentMatch.libero;if(lib&&!map.has(lib))map.set(lib,{ord:6,lbl:'L'});
+  // fino a 2 liberi (L1 / L2)
+  const libs=[S.currentMatch.libero,S.currentMatch.libero2].filter(Boolean),two=libs.length>1;
+  libs.forEach((lib,i)=>{if(!map.has(lib))map.set(lib,{ord:6+i,lbl:two?'L'+(i+1):'L'});});
   return map;
 }
-// O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco
-function trajRequired(){return !S.fast||S.selFund==='battuta'||S.selFund==='attacco';}
+// O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
+function trajRequired(){if(S.selFund==='difesa')return false;return !S.fast||S.selFund==='battuta'||S.selFund==='attacco';}
+// ----- sottotipo opzionale (tipo battuta / tipo attacco) dell'ultima azione registrata -----
+// In modalità standard la card sta sotto gli esiti; in modalità veloce sopra la griglia giocatori (dove si torna dopo l'esito).
+function renderSubType(){
+  const card=$('#subTypeCard'),sp=S.subPending;
+  const st=sp&&S.currentMatch&&sp.a.matchId===S.currentMatch.id?SUBTYPES[sp.a.fund]:null;
+  if(!st){card.classList.add('hidden');return;}
+  const anchor=S.fast?$('#stepPlayer'):$('#outcomeGrid').parentElement;
+  if(card.previousElementSibling!==anchor)anchor.after(card);
+  const p=S.players.find(x=>x.id===sp.a.playerId),cur=sp.a[st.field]||null;
+  $('#subTypeTitle').textContent=st.title+' (opzionale)';
+  $('#subTypeInfo').textContent=`ultima azione · #${p?p.number:'?'} ${FUNDAMENTALS[sp.a.fund].label} ${sp.a.outcome}`;
+  $('#subTypeChips').innerHTML=st.list.map(t=>`<button class="chip teal ${cur===t.k?'on':''}" data-st="${t.k}" aria-pressed="${cur===t.k}">${t.ico} ${t.lbl}</button>`).join('')
+    +`<button class="chip" data-st="" aria-label="Chiudi senza scegliere">✕</button>`;
+  $$('#subTypeChips .chip').forEach(b=>b.onclick=async()=>{
+    const k=b.dataset.st;
+    if(!k){S.subPending=null;renderSubType();return;}
+    sp.a[st.field]=cur===k?null:k; // ritocco = deseleziona
+    await put('actions',sp.a);
+    renderSubType();renderLog();
+    if(sp.a[st.field])toast(st.title+': '+st.list.find(t=>t.k===k).lbl+' ✓');
+  });
+  card.classList.remove('hidden');
+}
 // scroll a uno step tenendo conto di top bar + scorebar sticky
 function scrollToStep(el){
   if(!el)return;
@@ -1005,7 +1068,9 @@ function lineupSheet(){
   const m=S.currentMatch;if(!m)return toast('Nessuna partita attiva');
   const pls=teamPlayers();
   if(pls.length<6)return toast('Servono almeno 6 giocatori in rosa');
-  const opt=sel=>`<option value="">—</option>`+pls.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>#${p.number} ${esc(p.name)}</option>`).join('');
+  // libFirst: nei select dei liberi i giocatori con ruolo Libero compaiono per primi
+  const opt=(sel,libFirst)=>{const list=libFirst?[...pls.filter(isLibero),...pls.filter(p=>!isLibero(p))]:pls;
+    return `<option value="">—</option>`+list.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>#${p.number} ${esc(p.name)}${isLibero(p)?' (L)':''}</option>`).join('');};
   const lu=m.lineup||{};
   const cell=z=>`<div class="lucell ${[4,3,2].includes(z)?'net':''}"><div class="z">Zona ${z}${[4,3,2].includes(z)?' · rete':''}</div><select data-z="${z}">${opt(lu[z])}</select></div>`;
   modal(`<h2 style="margin:0 0 4px;font-size:22px">Formazione di partenza</h2>
@@ -1014,8 +1079,10 @@ function lineupSheet(){
     <div class="lugrid" style="margin-top:8px">${[5,6,1].map(cell).join('')}</div>
     <label class="fld" style="margin-top:14px">Palleggiatore</label>
     <select class="inp" id="luSetter">${opt(m.setterId)}</select>
-    <label class="fld" style="margin-top:12px">Libero (opzionale)</label>
-    <select class="inp" id="luLibero">${opt(m.libero)}</select>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <div class="grow"><label class="fld">Libero 1 (opzionale)</label><select class="inp" id="luLibero">${opt(m.libero,true)}</select></div>
+      <div class="grow"><label class="fld">Libero 2 (opzionale)</label><select class="inp" id="luLibero2">${opt(m.libero2,true)}</select></div>
+    </div>
     <button class="btn pri full" id="luSave" style="margin-top:16px">Salva formazione</button>
     ${m.setterZone?'<button class="btn gho full" id="luReset" style="margin-top:8px">↺ Azzera rotazione (torna a P'+m.setterZone+')</button>':''}`);
   $('#luSave').onclick=async()=>{
@@ -1027,7 +1094,9 @@ function lineupSheet(){
     if(!setterId)return toast('Indica il palleggiatore');
     const setterZone=+Object.keys(lineup).find(z=>lineup[z]===setterId);
     if(!setterZone)return toast('Il palleggiatore deve essere tra i 6 titolari');
-    m.lineup=lineup;m.setterId=setterId;m.setterZone=setterZone;m.libero=$('#luLibero').value||null;
+    const lib1=$('#luLibero').value||null,lib2=$('#luLibero2').value||null;
+    if(lib1&&lib1===lib2)return toast('Libero 1 e Libero 2 devono essere diversi');
+    m.lineup=lineup;m.setterId=setterId;m.setterZone=setterZone;m.libero=lib1||lib2;m.libero2=lib1?lib2:null;
     if(m.rotStep==null)m.rotStep=0;
     await put('matches',m);closeModal();renderScore();toast('Formazione salvata · '+rotLabelText());
   };
@@ -1048,13 +1117,21 @@ function initCourt(){
   c.addEventListener('pointerdown',e=>{
     const r=c.getBoundingClientRect();
     const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+    if(S.selFund==='difesa'){
+      // difesa: un solo punto d'impatto, solo nella nostra metà campo
+      if(y<0.5){toast('Difesa: tocca la tua metà campo');return;}
+      S.from={x,y};S.to={x,y};
+      $('#courtHint').textContent='Punto di difesa segnato — scegli l\'esito ▾';
+      if(S.fast)scrollToStep($('#stepOutcome'));
+      drawCourt();return;
+    }
     if(!S.from){S.from={x,y};$('#courtHint').textContent='Tocca il punto di arrivo';}
     else if(!S.to){S.to={x,y};$('#courtHint').textContent='Traiettoria pronta — scegli l\'esito ▾';if(S.fast)scrollToStep($('#stepOutcome'));}
     else {S.from={x,y};S.to=null;$('#courtHint').textContent='Tocca il punto di arrivo';}
     drawCourt();
   });
 }
-function courtHintIdle(){return trajRequired()?'Tocca il punto di partenza dell\'azione':'Traiettoria opzionale — puoi scegliere subito l\'esito';}
+function courtHintIdle(){if(S.selFund==='difesa')return 'Difesa: tocca il punto d\'impatto nella tua metà (opzionale)';return trajRequired()?'Tocca il punto di partenza dell\'azione':'Traiettoria opzionale — puoi scegliere subito l\'esito';}
 $('#resetCourt').onclick=()=>{S.from=null;S.to=null;$('#courtHint').textContent=courtHintIdle();drawCourt();};
 // court drawing: vertical court, net in middle. our half = bottom.
 // Geometria condivisa tra disegno e calcolo zone (B4): canvas W×H, margine esterno M (zona "fuori")
@@ -1066,6 +1143,12 @@ function drawCourt(){
   drawCourtBase(ctx);
   // points
   const dot=(p,col)=>{const X=p.x*W,Y=p.y*H;ctx.fillStyle=col;ctx.beginPath();ctx.arc(X,Y,7,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();};
+  if(S.selFund==='difesa'){
+    // difesa: oscura la metà avversaria, mostra solo il punto d'impatto
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,0,W,H/2);
+    if(S.from)dot(S.from,'#23d3b3');
+    return;
+  }
   if(S.from&&S.to)drawArrow(ctx,S.from,S.to,'#ffd23f',3,10);
   if(S.from)dot(S.from,'#23d3b3');
   if(S.to)dot(S.to,'#ff6a2b');
@@ -1132,6 +1215,7 @@ async function recordAction(outcomeKey){
     from:hasTraj?S.from:null, to:hasTraj?S.to:null,
     fromZone:hasTraj?zoneOf(S.from):null, toZone:hasTraj?zoneOf(S.to):null,
     setCall:S.selFund==='alzata'?(S.setCall||null):null,
+    serveType:null, attackType:null, // opzionali, impostabili subito dopo l'esito
     rotation:curSetterZone(), phase:phaseNow(), // O3: K1 ricezione / K2 battuta
     setNum:m.curSet+1, mode:S.mode, videoTime,
     ts:Date.now()
@@ -1145,6 +1229,8 @@ async function recordAction(outcomeKey){
   }
   await put('actions',a);
   if(oc&&oc.pt){await put('matches',m);renderScore();}
+  // battuta/attacco: propone il sottotipo opzionale per questa azione (resta null se non scelto)
+  S.subPending=SUBTYPES[a.fund]?{a}:null;
   // reset traiettoria; O2: ricorda il giocatore per "Stesso giocatore"
   S.lastPlayer=S.selPlayer;
   S.from=null;S.to=null;
@@ -1154,7 +1240,7 @@ async function recordAction(outcomeKey){
     S.selPlayer=null;renderScout();scrollToStep($('#stepPlayer'));
   }else{
     $('#courtHint').textContent=courtHintIdle();
-    drawCourt();renderLog();
+    drawCourt();renderLog();renderSubType();
   }
   const ptTxt=oc&&oc.pt?(oc.pt==='us'?' · +1 NOI':' · +1 AVV'):'';
   toast(`${fundLbl}: ${oc?oc.lbl:outcomeKey}${ptTxt}${so} ✓`);
@@ -1189,9 +1275,11 @@ async function renderLog(){
     const o=fund?fund.outcomes.find(x=>x.k===a.outcome):null;
     const col=OUTCOME_COLOR[o?.cls]||'#888';
     const sc=a.setCall?` <span style="color:var(--teal);font-size:10px">${esc(a.setCall)}</span>`:'';
-    const zn=a.fromZone||a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>`:'';
+    const zn=a.fund==='difesa'&&a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.toZone}</span>`
+      :a.fromZone||a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>`:'';
+    const stp=subtypeOf(a),stTxt=stp?` <span style="color:var(--mut);font-size:10px">(${stp.lbl})</span>`:'';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${sc}${rot}${zn}
+      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${stTxt}${sc}${rot}${zn}
       <span class="meta">${t}${delBtn}</span></div>`;
   }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
   $$('[data-da]').forEach(b=>b.onclick=async()=>{
@@ -1207,6 +1295,7 @@ async function renderLog(){
 async function commitPendingDelete(){
   const a=S.pendingDel;if(!a)return;
   S.pendingDel=null;
+  if(S.subPending&&S.subPending.a.id===a.id)S.subPending=null;
   const later=(await getByIndex('actions','match',a.matchId)).some(x=>x.ts>a.ts&&x.id!==a.id);
   await del('actions',a.id);
   // B1: annulla l'effetto dell'azione sul punteggio del suo set
@@ -1317,7 +1406,8 @@ function vlinkHtml(a){return `<button class="vlink" data-seek="${a.id}" aria-lab
 function actionLabel(a){
   if(a.generic)return genericLabel(a);
   const p=S.players.find(x=>x.id===a.playerId),f=FUNDAMENTALS[a.fund];
-  return `#${p?p.number:'?'} ${p?esc(p.name):''} · ${f?f.label:''} ${a.outcome||''}`;
+  const stp=subtypeOf(a);
+  return `#${p?p.number:'?'} ${p?esc(p.name):''} · ${f?f.label:''} ${a.outcome||''}${stp?' ('+stp.lbl+')':''}`;
 }
 const videoReady={
   file:()=>{const v=$('#vid');return !!(v&&v.currentSrc&&!isNaN(v.duration));},
@@ -1447,7 +1537,7 @@ function actionPoint(a){
 const pct=(n,d)=>d?Math.round(n/d*100):null;
 const fmtPct=(v,signed)=>v==null?'–':((signed&&v>0?'+':'')+v+'%');
 const effColor=v=>v==null?'var(--mut2)':v>=0?'var(--acc2)':'var(--bad)';
-function countOutcomes(list){const c={'#':0,'+':0,'-':0,'/':0,'=':0};for(const a of list)if(a.outcome in c)c[a.outcome]++;return c;}
+function countOutcomes(list){const c={'#':0,'+':0,'-':0,'v':0,'/':0,'=':0};for(const a of list)if(a.outcome in c)c[a.outcome]++;return c;}
 // list = azioni tecniche di UN fondamentale; nSets = set giocati (per le medie per set)
 function fundMetrics(fund,list,nSets){
   const n=list.length,c=countOutcomes(list),m={n,c,fund};
@@ -1461,12 +1551,17 @@ function fundMetrics(fund,list,nSets){
     m.eff=n?Math.round((c['#']*2+c['+']-c['/']-c['=']*2)/(n*2)*100):null; // pesi 2/1/0/−1/−2 su tot×2
     m.main=m.posPct;m.mainTxt=fmtPct(m.posPct);m.mainLbl='Pos%';
   }else if(fund==='attacco'){
-    m.killPct=pct(c['#'],n);m.errPct=pct(c['='],n);m.blkPct=pct(c['/'],n);
+    m.killPct=pct(c['#'],n);m.errPct=pct(c['='],n);m.blkPct=pct(c['/'],n);m.touchPct=pct(c['v'],n);
     m.eff=pct(c['#']-c['=']-c['/'],n);                            // (punti − errori − murati)/tot
     m.main=m.eff;m.mainTxt=fmtPct(m.eff,true);m.mainLbl='Eff%';
   }else if(fund==='muro'){
     m.pts=c['#'];m.errPct=pct(c['='],n);m.perSet=nSets?+(c['#']/nSets).toFixed(2):null;
+    m.favPct=pct(c['#']+c['+'],n);                                // punti + tocchi favorevoli / tot
     m.main=m.pts;m.mainTxt=String(m.pts);m.mainLbl='Punti';
+  }else if(fund==='difesa'){
+    m.posPct=pct(c['#']+c['+'],n);m.prfPct=pct(c['#'],n);m.errPct=pct(c['='],n);
+    m.errPerSet=nSets?+(c['=']/nSets).toFixed(2):null;
+    m.main=m.posPct;m.mainTxt=fmtPct(m.posPct);m.mainLbl='Pos%';
   }else if(fund==='alzata'){
     m.posPct=pct(c['#']+c['+'],n);m.prfPct=pct(c['#'],n);m.errPct=pct(c['='],n);
     m.main=m.posPct;m.mainTxt=fmtPct(m.posPct);m.mainLbl='Pos%';
@@ -1482,9 +1577,10 @@ function countPlayedSets(matches,acts){
 // colonne di dettaglio per fondamentale: [etichetta, fn(metriche) → html]
 const FUND_COLS={
   battuta:  [['Ace',m=>m.c['#']],['Err',m=>m.c['=']],['Ace%',m=>fmtPct(m.acePct)],['Err%',m=>fmtPct(m.errPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
-  ricezione:[['#',m=>m.c['#']],['+',m=>m.c['+']],['Err',m=>m.c['=']],['Prf%',m=>fmtPct(m.prfPct)],['Pos%',m=>fmtPct(m.posPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
-  attacco:  [['Pt',m=>m.c['#']],['Err',m=>m.c['=']],['Mur',m=>m.c['/']],['Kill%',m=>fmtPct(m.killPct)],['Err%',m=>fmtPct(m.errPct)],['Mur%',m=>fmtPct(m.blkPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
-  muro:     [['Pt',m=>m.c['#']],['Tocchi',m=>m.c['+']],['Err',m=>m.c['=']],['Pt/set',m=>m.perSet??'–',true]],
+  ricezione:[['#',m=>m.c['#']],['+',m=>m.c['+']],['Fb',m=>m.c['/']],['Err',m=>m.c['=']],['Prf%',m=>fmtPct(m.prfPct)],['Pos%',m=>fmtPct(m.posPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
+  attacco:  [['Pt',m=>m.c['#']],['Err',m=>m.c['=']],['Mur',m=>m.c['/']],['T.muro',m=>m.c['v']],['Kill%',m=>fmtPct(m.killPct)],['Err%',m=>fmtPct(m.errPct)],['Mur%',m=>fmtPct(m.blkPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
+  difesa:   [['#',m=>m.c['#']],['+',m=>m.c['+']],['−',m=>m.c['-']],['Err',m=>m.c['=']],['Err/set',m=>m.errPerSet??'–'],['Pos%',m=>fmtPct(m.posPct),true]],
+  muro:     [['Pt',m=>m.c['#']],['T.fav',m=>m.c['+']],['T.sfav',m=>m.c['-']],['Err',m=>m.c['=']],['Fav%',m=>fmtPct(m.favPct)],['Pt/set',m=>m.perSet??'–',true]],
   alzata:   [['#',m=>m.c['#']],['+',m=>m.c['+']],['Err',m=>m.c['=']],['Prf%',m=>fmtPct(m.prfPct)],['Pos%',m=>fmtPct(m.posPct),true]],
 };
 async function loadStatData(matchId){
@@ -1525,6 +1621,7 @@ async function computeStats(){
     k+=kpi(fmtPct(at.killPct),'Kill% attacco','var(--good)');
     k+=kpi(fmtPct(at.eff,true),'Eff. attacco',effColor(at.eff));
     k+=kpi(mu.perSet??'–','Muri punto / set','var(--acc2)');
+    k+=kpi(fmtPct(FM.difesa.posPct),'Difesa pos.','var(--good)');
     k+=kpi(nSets,'Set giocati');
   }else{
     const m=FM[statFund];
@@ -1613,6 +1710,22 @@ async function computeStats(){
     }).join(''):'<div class="empty" style="padding:16px">Nessuna alzata con destinazione registrata</div>';
   }
 
+  // ---- distribuzione tipo servizio / tipo attacco (solo se filtro = battuta o attacco) ----
+  const subSt=SUBTYPES[statFund];
+  $('#subStatsTitle').classList.toggle('hidden',!subSt);
+  $('#subStatsBox').classList.toggle('hidden',!subSt);
+  if(subSt){
+    $('#subStatsTitle').textContent=statFund==='battuta'?'Distribuzione tipo servizio':'Distribuzione tipo attacco';
+    const isB=statFund==='battuta';
+    const rows=[...subSt.list.map(t=>({lbl:t.ico+' '+t.lbl,list:skill.filter(a=>a[subSt.field]===t.k)})),
+      {lbl:'<span style="color:var(--mut2)">Non indicato</span>',list:skill.filter(a=>!a[subSt.field])}].filter(r=>r.list.length);
+    const tot=skill.length;
+    $('#subStatsBox').innerHTML=tot?`<table><thead><tr><th class="pl">Tipo</th><th>Tot</th><th>%</th><th>${isB?'Ace':'Pt'}</th><th>Err</th><th>${isB?'Ace%':'Kill%'}</th><th>Eff%</th></tr></thead><tbody>${rows.map(r=>{
+      const m=fundMetrics(statFund,r.list,nSets);
+      return `<tr><td class="pl">${r.lbl}</td><td>${m.n}</td><td>${fmtPct(pct(m.n,tot))}</td><td style="color:var(--good)">${m.c['#']}</td><td style="color:var(--bad)">${m.c['=']}</td><td>${fmtPct(isB?m.acePct:m.killPct)}</td><td style="font-weight:800;color:${effColor(m.eff)}">${fmtPct(m.eff,true)}</td></tr>`;
+    }).join('')}</tbody></table>`:`<div class="empty" style="padding:16px">Nessuna ${isB?'battuta':'azione d\'attacco'} per questo filtro</div>`;
+  }
+
   // ---- per giocatore ----
   if(!skill.length){$('#playerStatsBox').innerHTML='<div class="empty"><div class="big">📊</div>Nessuna azione tecnica per questo filtro</div>';return;}
   const rowPls=pl?[pl]:pls;
@@ -1665,7 +1778,7 @@ async function buildReportHtml(matchId){
   const fundTable=FUND_KEYS.filter(k=>FM[k].n).map(k=>{
     const m=FM[k],cols=FUND_COLS[k];
     return `<tr><td class="l"><b>${FUNDAMENTALS[k].label}</b></td><td>${m.n}</td><td>${m.c['#']}</td><td>${m.c['+']}</td><td>${m.c['-']}</td><td>${m.c['/']}</td><td>${m.c['=']}</td>
-      <td class="l">${cols.filter(c=>!['Ace','Err','Pt','#','+','Tocchi','Mur'].includes(c[0])).map(c=>`${c[0]} <b>${c[1](m)}</b>`).join(' · ')}</td></tr>`;
+      <td class="l">${cols.filter(c=>!['Ace','Err','Pt','#','+','−','Fb','T.fav','T.sfav','Mur'].includes(c[0])).map(c=>`${c[0]} <b>${c[1](m)}</b>`).join(' · ')}</td></tr>`;
   }).join('');
   // tabellino giocatori
   const cell=(list,f,fn)=>{const fa=list.filter(a=>a.fund===f);return fa.length?fn(fundMetrics(f,fa,nSets)):null;};
@@ -1674,9 +1787,10 @@ async function buildReportHtml(matchId){
     const b=cell(pa,'battuta',m=>[m.n,m.c['#'],m.c['='],fmtPct(m.eff,true)])||['','','',''];
     const r=cell(pa,'ricezione',m=>[m.n,m.c['='],fmtPct(m.posPct),fmtPct(m.prfPct),fmtPct(m.eff,true)])||['','','','',''];
     const at=cell(pa,'attacco',m=>[m.n,m.c['#'],m.c['='],m.c['/'],fmtPct(m.killPct),fmtPct(m.eff,true)])||['','','','','',''];
+    const df=cell(pa,'difesa',m=>[m.n,fmtPct(m.posPct)])||['',''];
     const mu=cell(pa,'muro',m=>[m.c['#']])||[''];
     const al=cell(pa,'alzata',m=>[m.n,fmtPct(m.posPct)])||['',''];
-    return `<tr>${label}<td class="pts">${pts}</td>${[...b,...r,...at,...mu,...al].map((v,i)=>`<td${[0,4,9,15,16].includes(i)?' class="sep"':''}>${v}</td>`).join('')}</tr>`;
+    return `<tr>${label}<td class="pts">${pts}</td>${[...b,...r,...at,...df,...mu,...al].map((v,i)=>`<td${[0,4,9,15,17,18].includes(i)?' class="sep"':''}>${v}</td>`).join('')}</tr>`;
   };
   const pRows=pls.map(p=>{const pa=skill.filter(a=>a.playerId===p.id);return pa.length?pRow(`<td class="n">${p.number}</td><td class="l">${e(p.name)}</td>`,pa):'';}).join('');
   const totRow=skill.length?pRow('<td class="n"></td><td class="l"><b>SQUADRA</b></td>',skill).replace('<tr>','<tr class="tot">'):'';
@@ -1712,8 +1826,8 @@ td.l{text-align:left}td.n{font-weight:800;width:30px}td.pts{font-weight:800;back
 <button class="noprint" onclick="window.print()">🖨 Stampa / PDF</button>
 <div class="top"><div>${head}</div><div class="brand">VBSCOUT<small>Referto tecnico · ${new Date().toLocaleDateString('it-IT')}</small></div></div>
 <h2>Tabellino giocatori</h2>
-${pRows?`<table><thead><tr class="grp"><th colspan="3"></th><th colspan="4" class="sep">Battuta</th><th colspan="5" class="sep">Ricezione</th><th colspan="6" class="sep">Attacco</th><th class="sep">Muro</th><th colspan="2" class="sep">Alzata</th></tr>
-<tr><th>N°</th><th>Giocatore</th><th>Pt</th><th class="sep">Tot</th><th>Ace</th><th>Err</th><th>Eff%</th><th class="sep">Tot</th><th>Err</th><th>Pos%</th><th>Prf%</th><th>Eff%</th><th class="sep">Tot</th><th>Pt</th><th>Err</th><th>Mur</th><th>Kill%</th><th>Eff%</th><th class="sep">Pt</th><th class="sep">Tot</th><th>Pos%</th></tr></thead>
+${pRows?`<table><thead><tr class="grp"><th colspan="3"></th><th colspan="4" class="sep">Battuta</th><th colspan="5" class="sep">Ricezione</th><th colspan="6" class="sep">Attacco</th><th colspan="2" class="sep">Difesa</th><th class="sep">Muro</th><th colspan="2" class="sep">Alzata</th></tr>
+<tr><th>N°</th><th>Giocatore</th><th>Pt</th><th class="sep">Tot</th><th>Ace</th><th>Err</th><th>Eff%</th><th class="sep">Tot</th><th>Err</th><th>Pos%</th><th>Prf%</th><th>Eff%</th><th class="sep">Tot</th><th>Pt</th><th>Err</th><th>Mur</th><th>Kill%</th><th>Eff%</th><th class="sep">Tot</th><th>Pos%</th><th class="sep">Pt</th><th class="sep">Tot</th><th>Pos%</th></tr></thead>
 <tbody>${pRows}${totRow}</tbody></table>`:'<p>Nessuna azione tecnica registrata.</p>'}
 <h2>Sintesi per fondamentale</h2>
 ${fundTable?`<table><thead><tr><th>Fondamentale</th><th>Tot</th><th>#</th><th>+</th><th>−</th><th>/</th><th>=</th><th>Metriche</th></tr></thead><tbody>${fundTable}</tbody></table>`:'<p>—</p>'}
@@ -1722,7 +1836,7 @@ ${setRows.length?`<table><thead><tr>${single?'':'<th>Partita</th>'}<th>Set</th><
 <div><h2>Rotazioni</h2>${rot.length?`<table><thead><tr><th>Rot.</th><th>Punti</th><th>Subiti</th><th>Saldo</th></tr></thead><tbody>${rot.join('')}</tbody></table>`:'<p>Formazione non impostata.</p>'}</div></div>
 <h2>Legenda</h2><div class="legend">
 <b>Battuta</b>: Eff% = (ace − errori) / tot · <b>Ricezione</b>: Pos% = (# + +) / tot, Prf% = # / tot, Eff% = (2·# + 1·+ − 1·/ − 2·=) / (2·tot) ·
-<b>Attacco</b>: Kill% = punti / tot, Eff% = (punti − errori − murati) / tot · <b>Muro</b>: punti (# ) · <b>Alzata</b>: Pos% = (# + +) / tot ·
+<b>Attacco</b>: Kill% = punti / tot, Eff% = (punti − errori − murati) / tot, T.muro = tocchi di muro rigiocati (v) · <b>Difesa</b>: Pos% = (# + +) / tot · <b>Muro</b>: punti (#), T.fav / T.sfav = tocchi favorevoli / sfavorevoli · <b>Alzata</b>: Pos% = (# + +) / tot ·
 Pt giocatore = ace + attacchi punto + muri punto · Err. nostri = errori (=) e murati (/) nelle azioni tecniche + errori/falli generici.
 </div></body></html>`;
 }
@@ -1762,7 +1876,7 @@ async function renderMap(){
   pSel.innerHTML='<option value="all">Tutti i giocatori</option>'+teamPlayers().map(p=>`<option value="${p.id}">#${p.number} ${esc(p.name)}</option>`).join('');
   pSel.value=[...pSel.options].some(o=>o.value===pVal)?pVal:'all';
   mSel.onchange=pSel.onchange=renderMap;
-  const trajFunds=FUND_KEYS.filter(k=>k!=='ricezione');
+  const trajFunds=FUND_KEYS.filter(k=>k!=='ricezione'&&k!=='difesa'); // difesa = solo punto d'impatto, niente traiettoria
   if(!trajFunds.includes(mapFund))mapFund='attacco';
   $('#mapFundChips').innerHTML=trajFunds.map(k=>`<button class="chip teal ${mapFund===k?'on':''}" data-mf="${k}">${FUNDAMENTALS[k].label}</button>`).join('');
   $$('#mapFundChips .chip').forEach(c=>c.onclick=()=>{mapFund=c.dataset.mf;renderMap();});
