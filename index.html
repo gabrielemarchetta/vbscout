@@ -172,6 +172,18 @@ select.inp{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xm
 .lucell .z{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--blue);font-weight:800;margin-bottom:4px}
 .lucell.net{border-color:rgba(255,106,43,.4)}
 .lucell select{width:100%;background:var(--bg2);border:1px solid var(--line2);color:var(--txt);border-radius:8px;padding:8px 6px;font-size:13px}
+/* anteprima formazione (mini-campo 3×2) */
+.lupv{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#c9762e;border:2px solid rgba(255,255,255,.8);border-radius:8px;padding:6px;margin:0 0 12px;position:relative}
+.lupv::after{content:'RETE';position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:8px;letter-spacing:1px;font-weight:800;background:var(--card);color:var(--mut);padding:0 6px;border-radius:4px}
+.lupv .pv{height:44px;border-radius:6px;background:rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,.75);font-weight:700;line-height:1.1}
+.lupv .pv b{font-family:'Saira Condensed';font-size:20px;color:#111;background:var(--rc,#ddd);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+.lupv .pv.r2{border-top:1px dashed rgba(255,255,255,.6)}
+.srvrad{display:flex;gap:8px}
+.srvrad label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--card2);border:1px solid var(--line2);border-radius:10px;padding:10px;font-weight:700;font-size:14px;cursor:pointer}
+.srvrad label:has(input:checked){border-color:var(--acc2);background:rgba(255,210,63,.14);color:var(--acc2)}
+/* toggle libero nella barra scout */
+.libbar{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.libbar .chip.on{background:#fff;border-color:#fff;color:#111;font-weight:800}
 
 /* ---------- log ---------- */
 .logrow{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:11px;background:var(--card2);border:1px solid var(--line);margin-bottom:7px;font-size:13px}
@@ -276,7 +288,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <div style="margin-top:10px"><label class="fld">Ruolo</label>
       <select class="inp" id="pRole">
         <option>Palleggiatore</option><option>Opposto</option><option>Schiacciatore</option>
-        <option>Centrale</option><option>Libero</option>
+        <option>Centrale</option><option>Libero</option><option>Universale</option>
       </select>
     </div>
     <button class="btn pri full" id="addPlayerBtn" style="margin-top:12px">Aggiungi alla rosa</button>
@@ -299,6 +311,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="chip sm" id="lineupBtn">⚙ Formazione</button>
         <button class="chip sm fast" id="fastBtn" aria-pressed="false" aria-label="Modalità scouting veloce">⚡ Veloce</button>
       </div>
+      <div class="libbar hidden" id="liberoBar" role="group" aria-label="Libero in campo"></div>
       <div class="sb-main">
         <div class="sb-box us">
           <div class="sb-name" id="usName">NOI</div>
@@ -852,14 +865,17 @@ function renderScout(){
   const pls=teamPlayers();
   const cell=(p,cls='',badge='')=>`<button type="button" class="pcell ${cls} ${S.selPlayer===p.id?'on':''}" data-p="${p.id}" aria-pressed="${S.selPlayer===p.id}" aria-label="#${p.number} ${esc(p.name)}${badge?' · '+badge:''}">${badge?`<span class="zb">${badge}</span>`:''}<div class="num">${p.number}</div><div class="nm">${esc(p.name)}</div></button>`;
   let grid;
-  const onField=S.fast?fieldPlayerMap():null;
+  const onField=fieldPlayerMap();
   if(!pls.length)grid='<div class="empty" style="grid-column:1/-1;padding:14px">Aggiungi giocatori nella Rosa</div>';
-  else if(onField&&onField.size){
+  else if(onField.size&&!S.fast){
+    // modalità standard: ordine per numero, ma i 6 in campo evidenziati e la panchina attenuata
+    grid=pls.map(p=>{const f=onField.get(p.id);return f&&!f.out?cell(p,'field',f.lbl):cell(p,'bench',f?f.lbl:'');}).join('');
+  }else if(onField.size){
     // O2: giocatori in campo per primi (ordine zone 4-3-2-5-6-1, poi libero), poi la panchina
-    const field=pls.filter(p=>onField.has(p.id)).sort((a,b)=>onField.get(a.id).ord-onField.get(b.id).ord);
-    const bench=pls.filter(p=>!onField.has(p.id));
+    const field=pls.filter(p=>onField.has(p.id)&&!onField.get(p.id).out).sort((a,b)=>onField.get(a.id).ord-onField.get(b.id).ord);
+    const bench=pls.filter(p=>!field.includes(p)).sort((a,b)=>(onField.get(a.id)?.ord??99)-(onField.get(b.id)?.ord??99)||a.number-b.number);
     grid='<div class="pdiv">In campo</div>'+field.map(p=>cell(p,'field',onField.get(p.id).lbl)).join('')
-      +(bench.length?'<div class="pdiv">Panchina</div>'+bench.map(p=>cell(p,'bench')).join(''):'');
+      +(bench.length?'<div class="pdiv">Panchina</div>'+bench.map(p=>cell(p,'bench',onField.get(p.id)?.lbl||'')).join(''):'');
   }else grid=pls.map(p=>cell(p)).join('');
   $('#scoutPlayers').innerHTML=grid;
   $$('#scoutPlayers .pcell').forEach(c=>c.onclick=()=>{S.selPlayer=c.dataset.p;renderScout();if(S.fast)scrollToStep($('#stepFund'));});
@@ -900,22 +916,74 @@ function renderScout(){
 }
 
 // ----- rotazione / formazione -----
-function rotZone(startZone,step){return ((startZone-1-(step||0))%6+6)%6+1;} // rotazione oraria
-function curSetterZone(){const m=S.currentMatch;if(!m||!m.setterZone)return null;return rotZone(m.setterZone,m.rotStep);}
+// rotazione oraria: dopo ogni cambio palla guadagnato il giocatore in zona 2 va in 1, 1→6, 6→5, 5→4, 4→3, 3→2
+function rotZone(startZone,step){return ((startZone-1-(step||0))%6+6)%6+1;}
+// Formazione per set: s.lu = {lineup:{1..6:playerId}, setterId, setterZone, libero, libero2, rotStep, libIn}.
+// Le partite create prima di questa versione hanno la formazione a livello partita (m.lineup…): usata come fallback.
+function curLU(){
+  const m=S.currentMatch,s=curSetObj();if(!m)return null;
+  if(s&&s.lu)return s.lu;
+  return m.lineup?m:null;
+}
+function curSetterZone(){const lu=curLU();if(!lu||!lu.setterZone)return null;return rotZone(lu.setterZone,lu.rotStep);}
 function rotLabelText(){const z=curSetterZone();return z?('P'+z):'—';}
+// zona attuale → playerId dei 6 titolari (formazione fissa del set + rotazioni avvenute)
 function curZonePlayers(){
-  const m=S.currentMatch;if(!m||!m.lineup)return null;
-  const out={};for(let z=1;z<=6;z++)out[rotZone(z,m.rotStep)]=m.lineup[z];
+  const lu=curLU();if(!lu||!lu.lineup)return null;
+  const out={};for(let z=1;z<=6;z++)out[rotZone(z,lu.rotStep)]=lu.lineup[z];
   return out;
 }
-// O2: mappa playerId → {ord, lbl} dei giocatori in campo nella rotazione corrente (+ libero)
+const isRole=(p,r)=>!!p&&String(p.role||'').toLowerCase()===r;
+function luLiberos(lu){lu=lu||curLU();return lu?[lu.libero,lu.libero2].filter(Boolean):[];}
+// Chi c'è DAVVERO in campo: come curZonePlayers ma con il libero (se "in campo") al posto
+// del centrale in seconda linea (zone 5, 6, 1). Ritorna {zones:{z:playerId}, libZone, replaced}.
+function curOnCourt(){
+  const zp=curZonePlayers();if(!zp)return null;
+  const lu=curLU(),zones={...zp};let libZone=null,replaced=null;
+  if(lu.libIn&&luLiberos(lu).includes(lu.libIn)){
+    const z=[5,6,1].find(z=>isRole(S.players.find(p=>p.id===zp[z]),'centrale'));
+    if(z){replaced=zp[z];zones[z]=lu.libIn;libZone=z;}
+  }
+  return {zones,libZone,replaced};
+}
+// O2: mappa playerId → {ord, lbl} dei giocatori in campo nella rotazione corrente (+ liberi in panchina)
 function fieldPlayerMap(){
-  const zp=curZonePlayers(),map=new Map();if(!zp)return map;
-  [4,3,2,5,6,1].forEach((z,i)=>{if(zp[z])map.set(zp[z],{ord:i,lbl:'Z'+z});});
-  // fino a 2 liberi (L1 / L2)
-  const libs=[S.currentMatch.libero,S.currentMatch.libero2].filter(Boolean),two=libs.length>1;
-  libs.forEach((lib,i)=>{if(!map.has(lib))map.set(lib,{ord:6+i,lbl:two?'L'+(i+1):'L'});});
+  const oc=curOnCourt(),map=new Map();if(!oc)return map;
+  [4,3,2,5,6,1].forEach((z,i)=>{const id=oc.zones[z];if(id)map.set(id,{ord:i,lbl:(z===oc.libZone?'L·':'')+'Z'+z});});
+  const libs=luLiberos(),two=libs.length>1; // fino a 2 liberi (L1 / L2)
+  libs.forEach((lib,i)=>{if(!map.has(lib))map.set(lib,{ord:6+i,lbl:two?'L'+(i+1):'L',out:true});});
   return map;
+}
+// zona attuale di un giocatore (null se non in campo)
+function playerZoneNow(pid){
+  const oc=curOnCourt();if(!oc||!pid)return null;
+  const z=Object.keys(oc.zones).find(z=>oc.zones[z]===pid);return z?+z:null;
+}
+function formationSnapshot(){
+  const oc=curOnCourt();if(!oc)return null;
+  return [1,2,3,4,5,6].map(z=>({zone:z,playerId:oc.zones[z]||null}));
+}
+// colori dei badge sul campo per ruolo
+const ROLE_COLOR={palleggiatore:'#ffd23f',opposto:'#ff8c2b',schiacciatore:'#4fc3ff',centrale:'#5bd16b',libero:'#ffffff',universale:'#a0a6b0'};
+function roleColor(p){return ROLE_COLOR[String(p?.role||'').toLowerCase()]||'#a0a6b0';}
+function shortName(p){if(!p)return'';const n=String(p.name||'').trim().split(/\s+/);return (n[n.length-1]||'').slice(0,8);}
+// toggle "Libero in campo" (uno per libero; mutuamente esclusivi)
+function renderLiberoBar(){
+  const bar=$('#liberoBar');if(!bar)return;
+  const lu=curLU(),libs=luLiberos(lu);
+  bar.classList.toggle('hidden',!libs.length);
+  if(!libs.length){bar.innerHTML='';return;}
+  bar.innerHTML=libs.map((id,i)=>{
+    const p=S.players.find(x=>x.id===id),on=lu.libIn===id;
+    const lbl=libs.length>1?('L'+(i+1)+' in campo'):'Libero in campo';
+    return `<button type="button" class="chip sm ${on?'on':''}" data-lib="${id}" aria-pressed="${on}">${on?'● ':'○ '}${lbl}${p?' · #'+p.number:''}</button>`;
+  }).join('');
+  $$('#liberoBar [data-lib]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.lib;lu.libIn=lu.libIn===id?null:id;
+    await put('matches',S.currentMatch);renderScout();
+    const oc=curOnCourt();
+    toast(lu.libIn?(oc&&oc.libZone?'Libero dentro · al posto del centrale in Z'+oc.libZone:'Libero dentro · nessun centrale in seconda linea ora'):'Libero fuori · rientra il centrale');
+  });
 }
 // O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
 function trajRequired(){if(S.selFund==='difesa')return false;return !S.fast||S.selFund==='battuta'||S.selFund==='attacco';}
@@ -956,9 +1024,10 @@ function phaseNow(){const s=curSetObj();return s&&s.serve?(s.serve==='us'?'K2':'
 function applyServeAfterPoint(a,winner){
   const m=S.currentMatch,s=curSetObj();
   if(!winner||!s||!s.serve||winner===s.serve)return '';
-  a.prevServe=s.serve;a.prevRotStep=m.rotStep??null;
+  const lu=curLU();
+  a.prevServe=s.serve;a.prevRotStep=lu?(lu.rotStep??null):null;
   s.serve=winner;
-  if(winner==='us'&&m.setterZone){m.rotStep=((m.rotStep||0)+1)%6;a.autoRot=true;return ' · cambio palla → '+rotLabelText();}
+  if(winner==='us'&&lu&&lu.setterZone){lu.rotStep=((lu.rotStep||0)+1)%6;a.autoRot=true;return ' · cambio palla → '+rotLabelText();}
   return winner==='us'?' · cambio palla':' · battuta AVV.';
 }
 function serveSheet(title){
@@ -986,6 +1055,8 @@ function renderScore(){
   sb.textContent=sv==='us'?'🏐 BAT':sv==='opp'?'📥 RIC':'❔ BAT?';
   sb.classList.toggle('us',sv==='us');sb.classList.toggle('opp',sv==='opp');
   sb.setAttribute('aria-label',sv==='us'?'Fase battuta (K2): tocca per cambiare':sv==='opp'?'Fase ricezione (K1): tocca per cambiare':'Chi batte? Tocca per impostarlo');
+  renderLiberoBar();
+  if(courtCtx)drawCourt(); // la rotazione (e chi batte) si riflette subito sul campo
   fixStickyTop();
 }
 $$('[data-pt]').forEach(b=>b.onclick=async()=>{
@@ -1016,8 +1087,9 @@ function genericLabel(a){
 }
 $('#newSetBtn').onclick=async()=>{
   const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;
-  await put('matches',m);renderScore();toast('Nuovo set '+(m.curSet+1));
-  serveSheet('Set '+(m.curSet+1)+' · chi batte per primo?'); // O3
+  await put('matches',m);renderScout();toast('Nuovo set '+(m.curSet+1));
+  // formazione del nuovo set (precompilata con quella del set precedente) + chi batte per primo
+  if(teamPlayers().length>=6)lineupSheet();else serveSheet('Set '+(m.curSet+1)+' · chi batte per primo?'); // O3
 };
 
 // timestamp del video attivo (file o youtube), null se non in modalità video
@@ -1037,21 +1109,22 @@ $$('[data-q]').forEach(b=>b.onclick=async()=>{
   const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side,gtype,
     setNum:m.curSet+1,rotation:curSetterZone(),phase:phaseNow(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
   const so=applyServeAfterPoint(a,usPoint?'us':'opp'); // O3
-  await put('matches',m);renderScore();
-  await put('actions',a);renderLog();
+  await put('matches',m);
+  await put('actions',a);if(a.autoRot)renderScout();else{renderScore();renderLog();} // rotazione → aggiorna anche giocatori in campo
   toast((usPoint?'Punto NOI ✓':'Punto AVV.')+so);
 });
 
 // ----- rotazione & formazione -----
 $('#rotBtn').onclick=async()=>{
   const m=S.currentMatch;if(!m)return;
-  if(!m.setterZone)return lineupSheet();
-  m.rotStep=((m.rotStep||0)+1)%6;
-  await put('matches',m);renderScore();toast('Rotazione '+rotLabelText());
+  const lu=curLU();
+  if(!lu||!lu.setterZone)return lineupSheet();
+  lu.rotStep=((lu.rotStep||0)+1)%6;
+  await put('matches',m);renderScout();toast('Rotazione '+rotLabelText());
 };
 $('#setNumBtn').onclick=async()=>{
   const m=S.currentMatch;if(!m||m.sets.length<2)return;
-  m.curSet=(m.curSet+1)%m.sets.length;await put('matches',m);renderScore();toast('Set '+(m.curSet+1));
+  m.curSet=(m.curSet+1)%m.sets.length;await put('matches',m);renderScout();toast('Set '+(m.curSet+1)); // ogni set ha la sua formazione
 };
 $('#lineupBtn').onclick=()=>lineupSheet();
 $('#serveBtn').onclick=()=>serveSheet(); // O3
@@ -1068,25 +1141,52 @@ function lineupSheet(){
   const m=S.currentMatch;if(!m)return toast('Nessuna partita attiva');
   const pls=teamPlayers();
   if(pls.length<6)return toast('Servono almeno 6 giocatori in rosa');
+  const set=curSetObj();if(!set)return;
+  // default: formazione già salvata per questo set → set precedente → formazione legacy a livello partita
+  const prev=m.sets.slice(0,m.curSet).reverse().find(x=>x.lu)?.lu;
+  const src=set.lu||prev||(m.lineup?m:null)||{};
+  const lu=src.lineup||{};
+  const started=(set.us+set.them)>0;
   // libFirst: nei select dei liberi i giocatori con ruolo Libero compaiono per primi
   const opt=(sel,libFirst)=>{const list=libFirst?[...pls.filter(isLibero),...pls.filter(p=>!isLibero(p))]:pls;
-    return `<option value="">—</option>`+list.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>#${p.number} ${esc(p.name)}${isLibero(p)?' (L)':''}</option>`).join('');};
-  const lu=m.lineup||{};
-  const cell=z=>`<div class="lucell ${[4,3,2].includes(z)?'net':''}"><div class="z">Zona ${z}${[4,3,2].includes(z)?' · rete':''}</div><select data-z="${z}">${opt(lu[z])}</select></div>`;
-  modal(`<h2 style="margin:0 0 4px;font-size:22px">Formazione di partenza</h2>
-    <p style="color:var(--mut);margin:0 0 14px;font-size:13px">Assegna i 6 titolari alle zone (fila in alto = sotto rete). La rotazione viene etichettata con la zona del palleggiatore (P1–P6).</p>
+    return `<option value="">—</option>`+list.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>#${p.number} ${esc(p.name)} · ${esc(String(p.role||'').slice(0,4))}</option>`).join('');};
+  const cell=z=>`<div class="lucell ${[4,3,2].includes(z)?'net':''}"><div class="z">Zona ${z}${[4,3,2].includes(z)?' · rete':''}</div><select data-z="${z}" aria-label="Giocatore in zona ${z}">${opt(lu[z])}</select></div>`;
+  const srv=started?(set.firstServe||''):(set.serve||set.firstServe||'');
+  modal(`<h2 style="margin:0 0 4px;font-size:22px">Formazione · Set ${m.curSet+1}</h2>
+    <p style="color:var(--mut);margin:0 0 12px;font-size:13px">Imposta una volta chi parte in ciascuna zona: l'app ruota da sola a ogni cambio palla e mostra i 6 in campo sul campo da gioco.</p>
+    <div class="lupv" id="luPrev" aria-label="Anteprima formazione"></div>
     <div class="lugrid">${[4,3,2].map(cell).join('')}</div>
     <div class="lugrid" style="margin-top:8px">${[5,6,1].map(cell).join('')}</div>
     <label class="fld" style="margin-top:14px">Palleggiatore</label>
-    <select class="inp" id="luSetter">${opt(m.setterId)}</select>
-    <div class="row" style="margin-top:12px;gap:8px">
-      <div class="grow"><label class="fld">Libero 1 (opzionale)</label><select class="inp" id="luLibero">${opt(m.libero,true)}</select></div>
-      <div class="grow"><label class="fld">Libero 2 (opzionale)</label><select class="inp" id="luLibero2">${opt(m.libero2,true)}</select></div>
+    <select class="inp" id="luSetter">${opt(src.setterId)}</select>
+    <div class="row" style="gap:8px;margin-top:12px">
+      <div class="grow"><label class="fld">Libero 1 (opz.)</label><select class="inp" id="luLibero">${opt(src.libero,true)}</select></div>
+      <div class="grow"><label class="fld">Libero 2 (opz.)</label><select class="inp" id="luLibero2">${opt(src.libero2,true)}</select></div>
     </div>
-    <button class="btn pri full" id="luSave" style="margin-top:16px">Salva formazione</button>
-    ${m.setterZone?'<button class="btn gho full" id="luReset" style="margin-top:8px">↺ Azzera rotazione (torna a P'+m.setterZone+')</button>':''}`);
+    <label class="fld" style="margin-top:12px">${started?'Chi ha battuto per primo?':'Chi batte primo?'}</label>
+    <div class="srvrad" role="radiogroup">
+      <label><input type="radio" name="luSrv" value="us" ${srv==='us'?'checked':''}> 🏐 Noi <small style="color:var(--mut2)">K2</small></label>
+      <label><input type="radio" name="luSrv" value="opp" ${srv==='opp'?'checked':''}> 📥 Loro <small style="color:var(--mut2)">K1</small></label>
+    </div>
+    ${started&&set.lu?'<p style="color:var(--mut2);font-size:12px;margin:8px 0 0">Set in corso: la rotazione attuale ('+rotLabelText()+') viene mantenuta.</p>':''}
+    <button class="btn pri full" id="luSave" style="margin-top:16px">✓ Conferma formazione</button>
+    ${set.lu&&set.lu.setterZone?'<button class="btn gho full" id="luReset" style="margin-top:8px">↺ Azzera rotazione (torna a P'+set.lu.setterZone+')</button>':''}`);
+  const byId=id=>pls.find(p=>p.id===id);
+  let setterTouched=!!src.setterId;
+  const readLineup=()=>{const l={};$$('[data-z]').forEach(x=>{l[+x.dataset.z]=x.value||null;});return l;};
+  const preview=()=>{
+    const l=readLineup();
+    // palleggiatore suggerito automaticamente se non scelto a mano
+    if(!setterTouched){const st=Object.values(l).map(byId).find(p=>isRole(p,'palleggiatore'));$('#luSetter').value=st?st.id:'';}
+    const dup=new Set(Object.values(l).filter((v,i,a)=>v&&a.indexOf(v)!==i));
+    $('#luPrev').innerHTML=[4,3,2,5,6,1].map(z=>{const p=byId(l[z]);
+      return `<div class="pv ${z>4||z===1?'r2':''}" style="--rc:${p?roleColor(p):'transparent'}">${p?`<b>${p.number}</b>${esc(shortName(p))}${dup.has(p.id)?' ⚠':''}`:'<span style="font-size:16px;opacity:.6">Z'+z+'</span>'}</div>`;}).join('');
+  };
+  $$('[data-z]').forEach(x=>x.onchange=preview);
+  $('#luSetter').onchange=()=>{setterTouched=!!$('#luSetter').value;};
+  preview();
   $('#luSave').onclick=async()=>{
-    const lineup={};$$('[data-z]').forEach(s=>{lineup[+s.dataset.z]=s.value||null;});
+    const lineup=readLineup();
     const filled=Object.values(lineup).filter(Boolean);
     if(filled.length<6)return toast('Assegna tutte e 6 le zone');
     if(new Set(filled).size<6)return toast('Stesso giocatore in più zone');
@@ -1094,13 +1194,22 @@ function lineupSheet(){
     if(!setterId)return toast('Indica il palleggiatore');
     const setterZone=+Object.keys(lineup).find(z=>lineup[z]===setterId);
     if(!setterZone)return toast('Il palleggiatore deve essere tra i 6 titolari');
-    const lib1=$('#luLibero').value||null,lib2=$('#luLibero2').value||null;
-    if(lib1&&lib1===lib2)return toast('Libero 1 e Libero 2 devono essere diversi');
-    m.lineup=lineup;m.setterId=setterId;m.setterZone=setterZone;m.libero=lib1||lib2;m.libero2=lib1?lib2:null;
-    if(m.rotStep==null)m.rotStep=0;
-    await put('matches',m);closeModal();renderScore();toast('Formazione salvata · '+rotLabelText());
+    const libero=$('#luLibero').value||null,libero2=$('#luLibero2').value||null;
+    if(libero&&libero===libero2)return toast('Libero 1 e Libero 2 devono essere diversi');
+    if([libero,libero2].some(l=>l&&filled.includes(l)))return toast('Il libero non può essere tra i 6 in formazione');
+    const sv=document.querySelector('input[name="luSrv"]:checked')?.value;
+    if(!sv)return toast('Indica chi batte per primo');
+    const old=set.lu||(m.lineup&&!prev?m:{}); // partite legacy: eredita rotazione dalla formazione a livello partita
+    const keepRot=started&&old.lineup;
+    set.lu={lineup,setterId,setterZone,libero,libero2,
+      rotStep:keepRot?(old.rotStep||0):0,
+      libIn:[libero,libero2].includes(old.libIn)?old.libIn:null};
+    set.firstServe=sv;
+    if(!started)set.serve=sv; // a set iniziato la fase corrente la decide il punteggio
+    await put('matches',m);closeModal();renderScout();
+    toast('Formazione set '+(m.curSet+1)+' · '+rotLabelText()+' · '+(set.serve==='us'?'battiamo noi (K2)':'riceviamo (K1)'));
   };
-  const lr=$('#luReset');if(lr)lr.onclick=async()=>{m.rotStep=0;await put('matches',m);closeModal();renderScore();toast('Rotazione azzerata');};
+  const lr=$('#luReset');if(lr)lr.onclick=async()=>{set.lu.rotStep=0;await put('matches',m);closeModal();renderScout();toast('Rotazione azzerata');};
 }
 
 // ----- mode toggle -----
@@ -1141,6 +1250,7 @@ COURT.line3Bot=COURT.H/2+(COURT.H/2-COURT.M)*(1/3);    // linea 3 m nostra (px)
 function drawCourt(){
   const ctx=courtCtx,W=COURT.W,H=COURT.H;
   drawCourtBase(ctx);
+  drawFieldPlayers(ctx);
   // points
   const dot=(p,col)=>{const X=p.x*W,Y=p.y*H;ctx.fillStyle=col;ctx.beginPath();ctx.arc(X,Y,7,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();};
   if(S.selFund==='difesa'){
@@ -1152,6 +1262,31 @@ function drawCourt(){
   if(S.from&&S.to)drawArrow(ctx,S.from,S.to,'#ffd23f',3,10);
   if(S.from)dot(S.from,'#23d3b3');
   if(S.to)dot(S.to,'#ff6a2b');
+}
+// centro (px) di una zona della nostra metà campo (metà in basso, rete in alto): 4-3-2 prima linea, 5-6-1 seconda
+function ourZoneCenter(z){
+  const {W,H,M}=COURT,col={4:0,3:1,2:2,5:0,6:1,1:2}[z],front=[4,3,2].includes(z);
+  return {x:M+(W-2*M)*(col+.5)/3, y:front?(H/2+COURT.line3Bot)/2:(COURT.line3Bot+H-M)/2};
+}
+// layer giocatori: i 6 in campo nelle zone attuali (rotazione inclusa), colorati per ruolo
+function drawFieldPlayers(ctx){
+  const oc=curOnCourt();if(!oc)return;
+  const s=curSetObj(),R=15;
+  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let z=1;z<=6;z++){
+    const p=S.players.find(x=>x.id===oc.zones[z]);if(!p)continue;
+    const {x,y}=ourZoneCenter(z),col=roleColor(p);
+    ctx.globalAlpha=.92;
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,R,0,Math.PI*2);ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle=z===oc.libZone?'#111':'rgba(0,0,0,.55)';ctx.stroke();
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#111';ctx.font="800 15px 'Saira Condensed', Manrope, sans-serif";ctx.fillText(String(p.number),x,y+1);
+    ctx.font='700 9px Manrope, sans-serif';ctx.fillStyle='rgba(255,255,255,.95)';
+    ctx.fillText(shortName(p),x,y+R+8);
+    ctx.font='700 8px Manrope, sans-serif';ctx.fillStyle='rgba(255,255,255,.6)';ctx.fillText('Z'+z,x,y-R-6);
+    if(z===1&&s&&s.serve==='us'){ctx.font='12px sans-serif';ctx.fillText('🏐',x+R+5,y-R+3);} // chi batte
+  }
+  ctx.restore();
 }
 // freccia in coordinate normalizzate (0..1) sul campo COURT.W×COURT.H
 function drawArrow(ctx,a,b,col,lw,head){
@@ -1217,6 +1352,7 @@ async function recordAction(outcomeKey){
     setCall:S.selFund==='alzata'?(S.setCall||null):null,
     serveType:null, attackType:null, // opzionali, impostabili subito dopo l'esito
     rotation:curSetterZone(), phase:phaseNow(), // O3: K1 ricezione / K2 battuta
+    playerZone:playerZoneNow(S.selPlayer), formationSnapshot:formationSnapshot(), // zona del giocatore e 6 in campo al momento dell'azione
     setNum:m.curSet+1, mode:S.mode, videoTime,
     ts:Date.now()
   };
@@ -1228,7 +1364,7 @@ async function recordAction(outcomeKey){
     so=applyServeAfterPoint(a,oc.pt); // O3: cambio palla + rotazione automatica
   }
   await put('actions',a);
-  if(oc&&oc.pt){await put('matches',m);renderScore();}
+  if(oc&&oc.pt){await put('matches',m);renderScore();if(a.autoRot&&!S.fast)renderScout();}
   // battuta/attacco: propone il sottotipo opzionale per questa azione (resta null se non scelto)
   S.subPending=SUBTYPES[a.fund]?{a}:null;
   // reset traiettoria; O2: ricorda il giocatore per "Stesso giocatore"
@@ -1277,9 +1413,10 @@ async function renderLog(){
     const sc=a.setCall?` <span style="color:var(--teal);font-size:10px">${esc(a.setCall)}</span>`:'';
     const zn=a.fund==='difesa'&&a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.toZone}</span>`
       :a.fromZone||a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>`:'';
+    const pz=a.playerZone?` <span style="color:var(--teal);font-size:10px;font-weight:700" title="Zona in campo al momento dell'azione">Z${a.playerZone}·${esc(shortName(p))}</span>`:'';
     const stp=subtypeOf(a),stTxt=stp?` <span style="color:var(--mut);font-size:10px">(${stp.lbl})</span>`:'';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${stTxt}${sc}${rot}${zn}
+      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${stTxt}${sc}${rot}${pz}${zn}
       <span class="meta">${t}${delBtn}</span></div>`;
   }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
   $$('[data-da]').forEach(b=>b.onclick=async()=>{
@@ -1305,7 +1442,7 @@ async function commitPendingDelete(){
     const d=actionScoreDelta(a);
     if(d.us||d.them){s.us=Math.max(0,s.us-d.us);s.them=Math.max(0,s.them-d.them);changed=true;}
     // O3: se era l'ultima azione, ripristina anche battuta e rotazione precedenti
-    if(!later&&a.prevServe){s.serve=a.prevServe;if(a.autoRot)m.rotStep=a.prevRotStep;changed=true;}
+    if(!later&&a.prevServe){s.serve=a.prevServe;if(a.autoRot){const lu=s.lu||m;lu.rotStep=a.prevRotStep;}changed=true;}
   }
   if(changed)await put('matches',m);
   if(S.currentMatch?.id===a.matchId)changed?renderScout():renderLog(); // renderScout aggiorna anche griglia in campo
