@@ -961,7 +961,7 @@ function renderScout(){
 // ----- rotazione / formazione -----
 // rotazione oraria: dopo ogni cambio palla guadagnato il giocatore in zona 2 va in 1, 1→6, 6→5, 5→4, 4→3, 3→2
 function rotZone(startZone,step){return ((startZone-1-(step||0))%6+6)%6+1;}
-// Formazione per set: s.lu = {lineup:{1..6:playerId}, setterId, setterZone, libero, libero2, rotStep, libIn}.
+// Formazione per set: s.lu = {lineup:{1..6:playerId}, setterId, setterZone, libero, libero2, rotStep, libIn, libAuto, libSplit}.
 // Le partite create prima di questa versione hanno la formazione a livello partita (m.lineup…): usata come fallback.
 function curLU(){
   const m=S.currentMatch,s=curSetObj();if(!m)return null;
@@ -978,17 +978,36 @@ function curZonePlayers(){
 }
 const isRole=(p,r)=>!!p&&String(p.role||'').toLowerCase()===r;
 function luLiberos(lu){lu=lu||curLU();return lu?[lu.libero,lu.libero2].filter(Boolean):[];}
-// Chi c'è DAVVERO in campo: come curZonePlayers ma con il libero (se "in campo") al posto
-// del centrale in seconda linea (zone 5, 6, 1). Ritorna {zones:{z:playerId}, libZone, replaced}.
+// Libero automatico (default): entra al posto del centrale in seconda linea (zone 5, 6, 1),
+// tranne quando quel centrale è in zona 1 e battiamo noi (K2): batte lui.
+// Con due liberi e "libSplit": L1 in ricezione (K1), L2 in difesa (K2).
+// Manuale (lu.libAuto===false): decide il toggle lu.libIn.
+function libAuto(lu){return !!lu&&lu.libAuto!==false;}
+function libSplit(lu){return !!(lu&&lu.libSplit&&lu.libero&&lu.libero2);}
+// libero che dovrebbe essere in campo nella fase corrente (prima di guardare le zone)
+function wantedLibero(lu){
+  if(!libAuto(lu))return lu.libIn&&luLiberos(lu).includes(lu.libIn)?lu.libIn:null;
+  if(libSplit(lu))return phaseNow()==='K2'?lu.libero2:lu.libero;
+  return lu.libero||lu.libero2||null;
+}
+// Chi c'è DAVVERO in campo: come curZonePlayers ma con il libero al posto del centrale
+// in seconda linea. Ritorna {zones:{z:playerId}, libZone, replaced, lib, mbServes}.
 function curOnCourt(){
   const zp=curZonePlayers();if(!zp)return null;
-  const lu=curLU(),zones={...zp};let libZone=null,replaced=null;
-  if(lu.libIn&&luLiberos(lu).includes(lu.libIn)){
-    const z=[5,6,1].find(z=>isRole(S.players.find(p=>p.id===zp[z]),'centrale'));
-    if(z){replaced=zp[z];zones[z]=lu.libIn;libZone=z;}
-  }
-  return {zones,libZone,replaced};
+  const lu=curLU(),zones={...zp};let libZone=null,replaced=null,lib=wantedLibero(lu),mbServes=false;
+  const z=[5,6,1].find(z=>isRole(S.players.find(p=>p.id===zp[z]),'centrale'));
+  if(lib&&z===1&&libAuto(lu)&&phaseNow()==='K2'){lib=null;mbServes=true;} // il centrale va a battere
+  if(lib&&z){replaced=zp[z];zones[z]=lib;libZone=z;}
+  return {zones,libZone,replaced,lib:libZone?lib:null,mbServes};
 }
+// testo breve per il toast quando il libero entra/esce/cambia da solo
+function libChangeText(before,after){
+  if(before===after)return '';
+  const oc=curOnCourt();
+  if(oc&&oc.lib){const p=S.players.find(x=>x.id===oc.lib);return ' · entra libero #'+(p?p.number:'?')+' (Z'+oc.libZone+')';}
+  return oc&&oc.mbServes?' · esce il libero, batte il centrale':' · esce il libero';
+}
+function libKey(){const oc=curOnCourt();return oc&&oc.lib?oc.lib+'|'+oc.libZone:'';}
 // O2: mappa playerId → {ord, lbl} dei giocatori in campo nella rotazione corrente (+ liberi in panchina)
 function fieldPlayerMap(){
   const oc=curOnCourt(),map=new Map();if(!oc)return map;
@@ -1016,16 +1035,24 @@ function renderLiberoBar(){
   const lu=curLU(),libs=luLiberos(lu);
   bar.classList.toggle('hidden',!libs.length);
   if(!libs.length){bar.innerHTML='';return;}
-  bar.innerHTML=libs.map((id,i)=>{
-    const p=S.players.find(x=>x.id===id),on=lu.libIn===id;
-    const lbl=libs.length>1?('L'+(i+1)+' in campo'):'Libero in campo';
-    return `<button type="button" class="chip sm ${on?'on':''}" data-lib="${id}" aria-pressed="${on}">${on?'● ':'○ '}${lbl}${p?' · #'+p.number:''}</button>`;
-  }).join('');
-  $$('#liberoBar [data-lib]').forEach(b=>b.onclick=async()=>{
-    const id=b.dataset.lib;lu.libIn=lu.libIn===id?null:id;
+  const auto=libAuto(lu),split=libSplit(lu),oc=curOnCourt(),cur=oc?oc.lib:null;
+  const autoBtn=`<button type="button" class="chip sm ${auto?'on':''}" data-libauto aria-pressed="${auto}" title="Il libero entra ed esce da solo a ogni cambio palla">🤖 Auto</button>`;
+  bar.innerHTML=autoBtn+libs.map((id,i)=>{
+    const p=S.players.find(x=>x.id===id),on=cur===id;
+    const lbl=split?(id===lu.libero?'L ric.':'L dif.'):libs.length>1?('L'+(i+1)):'Libero';
+    return `<button type="button" class="chip sm ${on?'on':''}" data-lib="${id}" aria-pressed="${on}">${on?'● ':'○ '}${lbl}${p?' · #'+p.number:''}${on&&oc.libZone?' · Z'+oc.libZone:''}</button>`;
+  }).join('')+(auto&&oc&&oc.mbServes?'<span style="font-size:11px;color:var(--mut2);align-self:center">batte il centrale</span>':'');
+  $('#liberoBar [data-libauto]').onclick=async()=>{
+    lu.libAuto=!auto;if(!lu.libAuto)lu.libIn=cur; // passando a manuale resta in campo chi c'è ora
     await put('matches',S.currentMatch);renderScout();
-    const oc=curOnCourt();
-    toast(lu.libIn?(oc&&oc.libZone?'Libero dentro · al posto del centrale in Z'+oc.libZone:'Libero dentro · nessun centrale in seconda linea ora'):'Libero fuori · rientra il centrale');
+    toast(lu.libAuto?'🤖 Libero automatico: entra ed esce da solo':'Libero manuale: usa i pulsanti per farlo entrare/uscire');
+  };
+  $$('#liberoBar [data-lib]').forEach(b=>b.onclick=async()=>{
+    // un tocco su un libero passa al controllo manuale
+    const id=b.dataset.lib;lu.libAuto=false;lu.libIn=cur===id?null:id;
+    await put('matches',S.currentMatch);renderScout();
+    const o=curOnCourt();
+    toast((lu.libIn?(o&&o.libZone?'Libero dentro · al posto del centrale in Z'+o.libZone:'Libero dentro · nessun centrale in seconda linea ora'):'Libero fuori · rientra il centrale')+' (manuale)');
   });
 }
 // O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
@@ -1070,11 +1097,11 @@ function phaseNow(){const s=curSetObj();return s&&s.serve?(s.serve==='us'?'K2':'
 function applyServeAfterPoint(a,winner){
   const m=S.currentMatch,s=curSetObj();
   if(!winner||!s||!s.serve||winner===s.serve)return '';
-  const lu=curLU();
+  const lu=curLU(),lb=libKey();
   a.prevServe=s.serve;a.prevRotStep=lu?(lu.rotStep??null):null;
   s.serve=winner;
-  if(winner==='us'&&lu&&lu.setterZone){lu.rotStep=((lu.rotStep||0)+1)%6;a.autoRot=true;return ' · cambio palla → '+rotLabelText();}
-  return winner==='us'?' · cambio palla':' · battuta AVV.';
+  if(winner==='us'&&lu&&lu.setterZone){lu.rotStep=((lu.rotStep||0)+1)%6;a.autoRot=true;return ' · cambio palla → '+rotLabelText()+libChangeText(lb,libKey());}
+  return (winner==='us'?' · cambio palla':' · battuta AVV.')+libChangeText(lb,libKey());
 }
 function serveSheet(title){
   const s=curSetObj();if(!s)return;
@@ -1227,8 +1254,8 @@ $$('[data-q]').forEach(b=>b.onclick=async()=>{
   const so=applyServeAfterPoint(a,usPoint?'us':'opp'); // O3
   await put('matches',m);
   await put('actions',a);
-  if(S.auto){autoFromLast(a);renderScout();}
-  else if(a.autoRot)renderScout();else{renderScore();renderLog();} // rotazione → aggiorna anche giocatori in campo
+  if(S.auto||so){if(S.auto)autoFromLast(a);renderScout();} // cambio palla → giocatori in campo / libero aggiornati
+  else{renderScore();renderLog();} // rotazione → aggiorna anche giocatori in campo
   toast((usPoint?'Punto NOI ✓':'Punto AVV.')+so);
 });
 
@@ -1281,6 +1308,9 @@ function lineupSheet(){
       <div class="grow"><label class="fld">Libero 1 (opz.)</label><select class="inp" id="luLibero">${opt(src.libero,true)}</select></div>
       <div class="grow"><label class="fld">Libero 2 (opz.)</label><select class="inp" id="luLibero2">${opt(src.libero2,true)}</select></div>
     </div>
+    <label id="luSplitRow" style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px">
+      <input type="checkbox" id="luSplit" ${src.libSplit!==false?'checked':''}> L1 in ricezione, L2 in difesa (cambio automatico)</label>
+    <p style="color:var(--mut2);font-size:12px;margin:6px 0 0">Il libero entra da solo al posto del centrale in seconda linea ed esce quando il centrale deve battere.</p>
     <label class="fld" style="margin-top:12px">${started?'Chi ha battuto per primo?':'Chi batte primo?'}</label>
     <div class="srvrad" role="radiogroup">
       <label><input type="radio" name="luSrv" value="us" ${srv==='us'?'checked':''}> 🏐 Noi <small style="color:var(--mut2)">K2</small></label>
@@ -1301,6 +1331,8 @@ function lineupSheet(){
       return `<div class="pv ${z>4||z===1?'r2':''}" style="--rc:${p?roleColor(p):'transparent'}">${p?`<b>${p.number}</b>${esc(shortName(p))}${dup.has(p.id)?' ⚠':''}`:'<span style="font-size:16px;opacity:.6">Z'+z+'</span>'}</div>`;}).join('');
   };
   $$('[data-z]').forEach(x=>x.onchange=preview);
+  const splitVis=()=>{$('#luSplitRow').style.display=$('#luLibero').value&&$('#luLibero2').value?'flex':'none';};
+  $('#luLibero').onchange=splitVis;$('#luLibero2').onchange=splitVis;splitVis();
   $('#luSetter').onchange=()=>{setterTouched=!!$('#luSetter').value;};
   preview();
   $('#luSave').onclick=async()=>{
@@ -1321,7 +1353,8 @@ function lineupSheet(){
     const keepRot=started&&old.lineup;
     set.lu={lineup,setterId,setterZone,libero,libero2,
       rotStep:keepRot?(old.rotStep||0):0,
-      libIn:[libero,libero2].includes(old.libIn)?old.libIn:null};
+      libIn:[libero,libero2].includes(old.libIn)?old.libIn:null,
+      libAuto:old.libAuto!==false,libSplit:!!(libero&&libero2&&$('#luSplit').checked)};
     set.firstServe=sv;
     if(!started)set.serve=sv; // a set iniziato la fase corrente la decide il punteggio
     await put('matches',m);closeModal();
@@ -1523,7 +1556,7 @@ async function recordActionInner(outcomeKey){
     so=applyServeAfterPoint(a,oc.pt); // O3: cambio palla + rotazione automatica
   }
   await put('actions',a);
-  if(oc&&oc.pt){await put('matches',m);renderScore();if(a.autoRot&&!S.fast)renderScout();}
+  if(oc&&oc.pt){await put('matches',m);renderScore();if(so&&!S.fast)renderScout();}
   // battuta/attacco: propone il sottotipo opzionale per questa azione (resta null se non scelto)
   S.subPending=SUBTYPES[a.fund]?{a}:null;
   // reset traiettoria; O2: ricorda il giocatore per "Stesso giocatore"
