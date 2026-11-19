@@ -25,7 +25,7 @@
   --rad:16px; --radS:11px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%}
+html{margin:0;height:100%}body{margin:0;min-height:100%}
 body{
   background:
     radial-gradient(1200px 600px at 80% -10%, rgba(255,106,43,.10), transparent 60%),
@@ -33,7 +33,7 @@ body{
     var(--bg);
   color:var(--txt); font-family:'Manrope',system-ui,sans-serif;
   -webkit-font-smoothing:antialiased; overscroll-behavior:none;
-  padding-bottom:84px;
+  padding-bottom:calc(var(--nav-h,84px) + 24px);
 }
 h1,h2,h3,.disp{font-family:'Saira Condensed','Manrope',sans-serif;letter-spacing:.5px}
 button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:none}
@@ -323,7 +323,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="chip sm" id="newSetBtn">Chiudi set ▸</button>
         <span class="grow"></span>
         <button class="chip sm srv" id="serveBtn" aria-label="Fase corrente: tocca per indicare chi batte">❔ BAT?</button>
-        <button class="chip sm rot" id="rotBtn" aria-label="Avanza rotazione">ROT <b id="rotLabel">—</b> ↻</button>
+        <button class="chip sm" id="rotBackBtn" aria-label="Rotazione indietro" title="Rotazione indietro">↺</button><button class="chip sm rot" id="rotBtn" aria-label="Avanza rotazione" title="Rotazione avanti">ROT <b id="rotLabel">—</b> ↻</button>
         <button class="chip sm" id="lineupBtn">⚙ Formazione</button>
         <button class="chip sm fast" id="fastBtn" aria-pressed="false" aria-label="Modalità scouting veloce">⚡ Veloce</button>
       </div>
@@ -426,7 +426,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <div class="sec-title" id="stepFund">2 · Fondamentale</div>
     <div class="card"><div class="chips" id="fundChips"></div>
       <button class="btn sm gho full hidden" id="samePlayerBtn" style="margin-top:10px">↺ Stesso giocatore</button>
-      <div class="row" style="margin-top:10px;gap:8px"><button class="chip sm" id="autoBtn" aria-pressed="false">🔁 Sequenza auto</button><button class="chip sm" id="trajLiveBtn" aria-pressed="false">📍 Traiettorie in LIVE</button><span id="nextHint" style="font-size:11px;color:var(--mut2)"></span></div></div>
+      <div class="row" style="margin-top:10px;gap:8px"><button class="chip sm" id="autoBtn" aria-pressed="false">🔁 Sequenza auto (video)</button><span id="nextHint" style="font-size:11px;color:var(--mut2)"></span></div></div>
 
     <!-- step 2b: set destination (only for alzata) -->
     <div class="sec-title hidden" id="setCallTitle">Alzata · dove alza</div>
@@ -434,7 +434,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
     <!-- step 3: court -->
     <div class="sec-title" id="stepCourt">3 · Traiettoria <span class="tag" id="courtTag">tocca 2 punti</span></div>
-    <div class="card">
+    <div class="card" id="courtCard">
       <div class="courtwrap"><canvas class="court" id="court" width="270" height="480"></canvas></div>
       <div class="courthint" id="courtHint">Tocca il punto di partenza dell'azione</div>
       <button class="btn sm gho full" id="resetCourt" style="margin-top:8px">↺ Azzera traiettoria</button>
@@ -442,7 +442,8 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
     <!-- step 4: outcome -->
     <div class="sec-title" id="stepOutcome">4 · Esito</div>
-    <div class="card"><button class="btn full" id="stdBtn" style="margin-bottom:10px"></button><div class="outs" id="outcomeGrid"></div></div>
+    <div class="card"><button class="btn full" id="stdBtn" style="margin-bottom:10px"></button><div class="outs" id="outcomeGrid"></div>
+      <div id="lastBar" class="hidden" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px"></div></div>
 
     <!-- step 4b: sottotipo opzionale dell'ultima azione (battuta / attacco) -->
     <div class="card hidden" id="subTypeCard" aria-live="polite">
@@ -659,8 +660,11 @@ const S={teams:[],players:[],matches:[],
   // O2: modalità veloce (persistita), ultimo giocatore usato; O13: eliminazione azione in attesa di conferma
   fast:false, lastPlayer:null, pendingDel:null,
 };
-S.auto=true;S.trajLive=false;S.autoPause=false;S.rate=1;S.resumeAfter=false;
-try{S.fast=localStorage.getItem('vbscout.fast')==='1';S.auto=localStorage.getItem('vbscout.auto')!=='0';S.autoPause=localStorage.getItem('vbscout.ap')==='1';S.trajLive=localStorage.getItem('vbscout.tl')==='1';}catch(_){}
+S.auto=true;S.autoPause=false;S.rate=1;S.resumeAfter=false;
+try{S.fast=localStorage.getItem('vbscout.fast')==='1';S.auto=localStorage.getItem('vbscout.auto')!=='0';S.autoPause=localStorage.getItem('vbscout.ap')==='1';}catch(_){}
+// sequenza automatica completa (fondamentale e giocatore successivi) solo nello scout da video;
+// in LIVE si propone solo l'inizio scambio: battuta con il giocatore in zona 1, oppure ricezione
+const seqOn=()=>S.auto&&S.mode==='video';
 
 // ---------- helpers ----------
 const $=s=>document.querySelector(s);
@@ -1056,7 +1060,7 @@ function renderLiberoBar(){
   });
 }
 // O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
-function trajRequired(){if(S.mode==='live'&&!S.trajLive)return false;return S.selFund==='battuta'||S.selFund==='attacco'||S.selFund==='alzata';} // traiettoria obbligatoria solo per battuta, attacco, alzata; ricezione, difesa e muro la hanno facoltativa
+function trajRequired(){if(S.mode==='live')return false;return S.selFund==='battuta'||S.selFund==='attacco'||S.selFund==='alzata';} // traiettoria obbligatoria solo per battuta, attacco, alzata; ricezione, difesa e muro la hanno facoltativa
 // ----- sottotipo opzionale (tipo battuta / tipo attacco) dell'ultima azione registrata -----
 // In modalità standard la card sta sotto gli esiti; in modalità veloce sopra la griglia giocatori (dove si torna dopo l'esito).
 function renderSubType(){
@@ -1115,6 +1119,8 @@ function serveSheet(title){
     toast(s.serve==='us'?'Battiamo noi · fase K2':'Riceviamo · fase K1');
   });
 }
+function fixNavPad(){const n=$('#nav');if(n)document.documentElement.style.setProperty('--nav-h',n.offsetHeight+'px');}
+window.addEventListener('resize',fixNavPad);window.addEventListener('orientationchange',()=>setTimeout(fixNavPad,300));
 function fixStickyTop(){const t=document.querySelector('.top'),sb=$('#scoreBar');if(t&&sb)sb.style.top=t.offsetHeight+'px';}
 window.addEventListener('resize',fixStickyTop);
 
@@ -1160,7 +1166,7 @@ function genericLabel(a){
   return GENERIC_LABELS[a.side+'|'+a.gtype]||'Azione';
 }
 $('#newSetBtn').onclick=async()=>{
-  const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;
+  const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;S.subPending=null;
   await put('matches',m);renderScout();toast('Nuovo set '+(m.curSet+1));
   // formazione del nuovo set (precompilata con quella del set precedente) + chi batte per primo
   if(teamPlayers().length>=6)lineupSheet();else serveSheet('Set '+(m.curSet+1)+' · chi batte per primo?'); // O3
@@ -1178,23 +1184,27 @@ const STD_OUT={battuta:'-',ricezione:'+',alzata:'+',attacco:'-',difesa:'+',muro:
 const NEXT_FUND={battuta:'difesa',ricezione:'alzata',alzata:'attacco',attacco:'difesa',difesa:'alzata',muro:'difesa'}; // dopo azione che non chiude lo scambio
 function autoPlayer(f){
   const oc=curOnCourt();if(!oc)return null;
-  if(f==='battuta')return oc.libZone===1?null:(oc.zones[1]||null); // chi è in zona 1 (se c'è il libero, scegli tu)
+  if(f==='battuta'){const zp=curZonePlayers();return (zp&&zp[1])||null;} // chi è in zona 1 per rotazione (anche il centrale: il libero non batte)
   if(f==='alzata')return Object.values(oc.zones).find(id=>isRole(S.players.find(p=>p.id===id),'palleggiatore'))||null;
   return null;
 }
+function rallyStart(){S.selFund=phaseNow()==='K2'?'battuta':'ricezione';S.selPlayer=autoPlayer(S.selFund);S.setCall=null;S.from=null;S.to=null;}
 function applyAuto(a,oc){
-  S.selFund=(oc&&oc.pt)?(phaseNow()==='K2'?'battuta':'ricezione'):(NEXT_FUND[a.fund]||'ricezione');
+  if(oc&&oc.pt){rallyStart();return;}          // fine scambio: battuta (con battitore) o ricezione, in LIVE e in video
+  if(!seqOn())return;                           // LIVE: durante lo scambio nessuna proposta
+  S.selFund=NEXT_FUND[a.fund]||'ricezione';
   S.selPlayer=autoPlayer(S.selFund);S.setCall=null;
 }
 // riallinea la proposta automatica all'ultima azione del set corrente (dopo annulla, punto rapido, inizio set)
 function autoFromLast(last){
-  if(!S.auto)return;
   const ends=!last||last.generic||!!actionPoint(last);
-  S.selFund=ends?(phaseNow()==='K2'?'battuta':'ricezione'):(NEXT_FUND[last.fund]||'ricezione');
+  if(ends){rallyStart();return;}
+  if(!seqOn())return;
+  S.selFund=NEXT_FUND[last.fund]||'ricezione';
   S.selPlayer=autoPlayer(S.selFund);S.setCall=null;S.from=null;S.to=null;
 }
 async function resyncAuto(){
-  const m=S.currentMatch;if(!S.auto||!m)return;
+  const m=S.currentMatch;if(!m)return;
   const acts=(await getByIndex('actions','match',m.id))
     .filter(a=>a.setNum===m.curSet+1&&a.id!==S.pendingDel?.id&&!(a.generic&&a.gtype==='correction'))
     .sort((a,b)=>a.ts-b.ts);
@@ -1204,10 +1214,14 @@ function renderAssist(){
   $('#autoBtn').classList.toggle('on',S.auto);$('#autoBtn').setAttribute('aria-pressed',S.auto);
   const o=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===STD_OUT[S.selFund]);
   $('#stdBtn').textContent='✓ Standard · '+(o?o.lbl:'');
-  $('#trajLiveBtn').classList.toggle('on',S.trajLive);$('#trajLiveBtn').setAttribute('aria-pressed',S.trajLive);
-  $('#nextHint').textContent=S.auto?'Fondamentale e giocatore proposti in automatico':'';
+  const live=S.mode==='live';
+  $('#autoBtn').classList.toggle('hidden',live);
+  $('#nextHint').textContent=live?'Battitore proposto a inizio scambio':S.auto?'Fondamentale e giocatore proposti in automatico':'';
+  // LIVE: niente campo/traiettorie, l'esito diventa lo step 3
+  $('#stepCourt').classList.toggle('hidden',live);$('#courtCard').classList.toggle('hidden',live);
+  $('#stepOutcome').textContent=(live?'3':'4')+' · Esito';
+  if(live){S.from=null;S.to=null;}
 }
-$('#trajLiveBtn').onclick=()=>{S.trajLive=!S.trajLive;try{localStorage.setItem('vbscout.tl',S.trajLive?'1':'0');}catch(_){}renderScout();toast(S.trajLive?'📍 In LIVE la traiettoria è obbligatoria per battuta, attacco, alzata':'In LIVE la traiettoria è facoltativa: giocatore + esito');};
 $('#stdBtn').onclick=()=>recordAction(STD_OUT[S.selFund]);
 $('#autoBtn').onclick=()=>{S.auto=!S.auto;try{localStorage.setItem('vbscout.auto',S.auto?'1':'0');}catch(_){}renderScout();toast(S.auto?'🔁 Sequenza automatica attiva':'Sequenza automatica spenta');};
 
@@ -1254,8 +1268,8 @@ $$('[data-q]').forEach(b=>b.onclick=async()=>{
   const so=applyServeAfterPoint(a,usPoint?'us':'opp'); // O3
   await put('matches',m);
   await put('actions',a);
-  if(S.auto||so){if(S.auto)autoFromLast(a);renderScout();} // cambio palla → giocatori in campo / libero aggiornati
-  else{renderScore();renderLog();} // rotazione → aggiorna anche giocatori in campo
+  S.subPending=null; // la scheda "tipo battuta/attacco" si riferiva a un'azione dello scambio precedente
+  autoFromLast(a);renderScout(); // nuovo scambio: battitore/ricezione proposti, campo e libero aggiornati // rotazione → aggiorna anche giocatori in campo
   toast((usPoint?'Punto NOI ✓':'Punto AVV.')+so);
 });
 
@@ -1265,7 +1279,14 @@ $('#rotBtn').onclick=async()=>{
   const lu=curLU();
   if(!lu||!lu.setterZone)return lineupSheet();
   lu.rotStep=((lu.rotStep||0)+1)%6;
-  await put('matches',m);renderScout();toast('Rotazione '+rotLabelText());
+  await put('matches',m);await resyncAuto();renderScout();toast('Rotazione avanti → '+rotLabelText());
+};
+$('#rotBackBtn').onclick=async()=>{
+  const m=S.currentMatch;if(!m)return;
+  const lu=curLU();
+  if(!lu||!lu.setterZone)return lineupSheet();
+  lu.rotStep=((lu.rotStep||0)+5)%6;
+  await put('matches',m);await resyncAuto();renderScout();toast('Rotazione indietro → '+rotLabelText());
 };
 $('#setNumBtn').onclick=async()=>{
   const m=S.currentMatch;if(!m||m.sets.length<2)return;
@@ -1299,7 +1320,12 @@ function lineupSheet(){
   const srv=started?(set.firstServe||''):(set.serve||set.firstServe||'');
   modal(`<h2 style="margin:0 0 4px;font-size:22px">Formazione · Set ${m.curSet+1}</h2>
     <p style="color:var(--mut);margin:0 0 12px;font-size:13px">Imposta una volta chi parte in ciascuna zona: l'app ruota da sola a ogni cambio palla e mostra i 6 in campo sul campo da gioco.</p>
+    ${prev&&!set.lu?'<p style="color:var(--teal);font-size:12px;margin:0 0 8px">Precompilata con la formazione di partenza del set precedente: ruotala se partite da un\'altra rotazione.</p>':''}
     <div class="lupv" id="luPrev" aria-label="Anteprima formazione"></div>
+    <div class="row" style="gap:8px;margin:8px 0">
+      <button type="button" class="btn sm gho grow" id="luRotBack">↺ Ruota indietro</button>
+      <button type="button" class="btn sm gho grow" id="luRotFwd">Ruota avanti ↻</button>
+    </div>
     <div class="lugrid">${[4,3,2].map(cell).join('')}</div>
     <div class="lugrid" style="margin-top:8px">${[5,6,1].map(cell).join('')}</div>
     <label class="fld" style="margin-top:14px">Palleggiatore</label>
@@ -1331,6 +1357,16 @@ function lineupSheet(){
       return `<div class="pv ${z>4||z===1?'r2':''}" style="--rc:${p?roleColor(p):'transparent'}">${p?`<b>${p.number}</b>${esc(shortName(p))}${dup.has(p.id)?' ⚠':''}`:'<span style="font-size:16px;opacity:.6">Z'+z+'</span>'}</div>`;}).join('');
   };
   $$('[data-z]').forEach(x=>x.onchange=preview);
+  // ruota tutta la formazione di una posizione (avanti = come a un cambio palla: 2→1, 1→6, 6→5…)
+  const shiftLineup=dir=>{
+    const l=readLineup(),n={};
+    for(let z=1;z<=6;z++)n[rotZone(z,dir)]=l[z];
+    $$('[data-z]').forEach(x=>{x.value=n[+x.dataset.z]||'';});
+    preview();
+    const st=$('#luSetter').value,zs=st&&Object.keys(n).find(z=>n[z]===st);
+    toast(zs?'Palleggiatore in zona '+zs+' (P'+zs+')':'Formazione ruotata');
+  };
+  $('#luRotFwd').onclick=()=>shiftLineup(1);$('#luRotBack').onclick=()=>shiftLineup(-1);
   const splitVis=()=>{$('#luSplitRow').style.display=$('#luLibero').value&&$('#luLibero2').value?'flex':'none';};
   $('#luLibero').onchange=splitVis;$('#luLibero2').onchange=splitVis;splitVis();
   $('#luSetter').onchange=()=>{setterTouched=!!$('#luSetter').value;};
@@ -1371,6 +1407,7 @@ $$('#modeSeg button').forEach(b=>b.onclick=()=>{
   $('#videoPanel').classList.toggle('hidden',S.mode!=='video');
   applyVideoLayout();
   syncYtTimer(); // O13
+  if(S.currentMatch)renderScout();
 });
 
 // ----- layout video affiancato (split-screen) -----
@@ -1563,15 +1600,14 @@ async function recordActionInner(outcomeKey){
   S.lastPlayer=S.selPlayer;
   S.from=null;S.to=null;
   const fundLbl=FUNDAMENTALS[S.selFund].label;
-  if(S.auto)applyAuto(a,oc); // proposta automatica del prossimo fondamentale/giocatore
+  applyAuto(a,oc); // fine scambio → battuta/ricezione; in video con sequenza auto anche il fondamentale successivo
   resumeVideoIfNeeded();
   if(S.fast){
     // O2: pronto per la prossima azione → deseleziona e torna alla scelta del giocatore
-    if(!S.auto)S.selPlayer=null;renderScout();scrollToStep(S.auto&&S.selPlayer?(trajRequired()?$('#stepCourt'):$('#stepOutcome')):$('#stepPlayer'));
+    if(!seqOn()&&!(oc&&oc.pt))S.selPlayer=null;renderScout();scrollToStep(S.selPlayer?(trajRequired()?$('#stepCourt'):$('#stepOutcome')):$('#stepPlayer'));
   }else{
     $('#courtHint').textContent=courtHintIdle();
-    drawCourt();renderLog();renderSubType();
-    if(S.auto)renderScout();
+    renderScout();
   }
   const ptTxt=oc&&oc.pt?(oc.pt==='us'?' · +1 NOI':' · +1 AVV'):'';
   toast(`${fundLbl}: ${oc?oc.lbl:outcomeKey}${ptTxt}${so} ✓`);
@@ -1583,7 +1619,7 @@ async function renderLog(){
   const acts=(await getByIndex('actions','match',S.currentMatch.id)).filter(a=>a.id!==S.pendingDel?.id).sort((a,b)=>b.ts-a.ts);
   cacheActions(acts);
   $('#logCount').textContent=acts.length;
-  $('#logList').innerHTML=acts.slice(0,14).map(a=>{
+  const rowHtml=a=>{
     const t=a.videoTime>0?vlinkHtml(a):'Set '+a.setNum; // O7: timestamp cliccabile → seek
     const delBtn=`<button class="iconbtn sm" data-da="${a.id}" aria-label="Elimina azione" style="width:26px;height:26px;font-size:13px;margin-left:6px;display:inline-flex">✕</button>`;
     const ph=a.phase?` <span style="color:var(--mut2);font-size:10px">${a.phase}</span>`:'';
@@ -1613,7 +1649,10 @@ async function renderLog(){
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
       <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${stTxt}${sc}${rot}${pz}${zn}
       <span class="meta">${t}${delBtn}</span></div>`;
-  }).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
+  };
+  $('#logList').innerHTML=acts.slice(0,14).map(rowHtml).join('')||'<div class="empty" style="padding:20px">Nessuna azione ancora registrata</div>';
+  const lb=$('#lastBar');
+  if(lb){lb.innerHTML=acts.length?'<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut2);font-weight:700;margin-bottom:2px">Ultima azione</div>'+rowHtml(acts[0]):'';lb.classList.toggle('hidden',!acts.length);}
   $$('[data-da]').forEach(b=>b.onclick=async()=>{
     const a=acts.find(x=>x.id===b.dataset.da);if(!a)return;
     await commitPendingDelete(); // una sola eliminazione in sospeso alla volta
@@ -1641,7 +1680,7 @@ async function commitPendingDelete(){
   }
   if(changed)await put('matches',m);
   if(S.currentMatch?.id===a.matchId){
-    if(S.auto&&!later){await resyncAuto();renderScout();} // l'azione annullata era l'ultima: riallinea la proposta automatica
+    if(!later){await resyncAuto();renderScout();} // l'azione annullata era l'ultima: riallinea la proposta (battitore ecc.)
     else changed?renderScout():renderLog(); // renderScout aggiorna anche griglia in campo
   }
 }
@@ -2483,6 +2522,7 @@ if('serviceWorker' in navigator){
   await loadAll();
   renderCtx();
   renderMatchView();
+  fixNavPad();
 })();
 </script>
 </body>
