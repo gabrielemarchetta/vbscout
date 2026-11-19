@@ -360,6 +360,12 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="chip sm" id="splitBtn" aria-pressed="false" aria-label="Affianca video e scout" title="Affianca video e scout">⧉ Affianca</button>
       </div>
 
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0">
+        <button class="chip sm" id="spdBtn" aria-label="Velocità video">⏩ 1×</button>
+        <button class="chip sm" id="apBtn" aria-pressed="false" aria-label="Pausa automatica mentre scegli">⏸ Auto-pausa</button>
+        <button class="chip sm" id="rlPrev" aria-label="Scambio precedente">⏮ Scambio</button>
+        <button class="chip sm" id="rlNext" aria-label="Scambio successivo">Scambio ⏭</button>
+      </div>
       <!-- source: local file -->
       <div id="vsrcFile">
         <input type="file" id="videoFile" accept="video/*" class="hidden">
@@ -419,7 +425,8 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <!-- step 2: fundamental -->
     <div class="sec-title" id="stepFund">2 · Fondamentale</div>
     <div class="card"><div class="chips" id="fundChips"></div>
-      <button class="btn sm gho full hidden" id="samePlayerBtn" style="margin-top:10px">↺ Stesso giocatore</button></div>
+      <button class="btn sm gho full hidden" id="samePlayerBtn" style="margin-top:10px">↺ Stesso giocatore</button>
+      <div class="row" style="margin-top:10px;gap:8px"><button class="chip sm" id="autoBtn" aria-pressed="false">🔁 Sequenza auto</button><span id="nextHint" style="font-size:11px;color:var(--mut2)"></span></div></div>
 
     <!-- step 2b: set destination (only for alzata) -->
     <div class="sec-title hidden" id="setCallTitle">Alzata · dove alza</div>
@@ -435,7 +442,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
     <!-- step 4: outcome -->
     <div class="sec-title" id="stepOutcome">4 · Esito</div>
-    <div class="card"><div class="outs" id="outcomeGrid"></div></div>
+    <div class="card"><button class="btn full" id="stdBtn" style="margin-bottom:10px"></button><div class="outs" id="outcomeGrid"></div></div>
 
     <!-- step 4b: sottotipo opzionale dell'ultima azione (battuta / attacco) -->
     <div class="card hidden" id="subTypeCard" aria-live="polite">
@@ -652,7 +659,8 @@ const S={teams:[],players:[],matches:[],
   // O2: modalità veloce (persistita), ultimo giocatore usato; O13: eliminazione azione in attesa di conferma
   fast:false, lastPlayer:null, pendingDel:null,
 };
-try{S.fast=localStorage.getItem('vbscout.fast')==='1';}catch(_){}
+S.auto=true;S.autoPause=false;S.rate=1;S.resumeAfter=false;
+try{S.fast=localStorage.getItem('vbscout.fast')==='1';S.auto=localStorage.getItem('vbscout.auto')!=='0';S.autoPause=localStorage.getItem('vbscout.ap')==='1';}catch(_){}
 
 // ---------- helpers ----------
 const $=s=>document.querySelector(s);
@@ -943,7 +951,7 @@ function renderScout(){
   const outs=FUNDAMENTALS[S.selFund].outcomes;
   $('#outcomeGrid').innerHTML=outs.map(o=>`<button class="out ${o.cls}" data-o="${o.k}"><span class="badge">${o.k}</span><span class="lbl">${o.lbl}</span></button>`).join('');
   $$('#outcomeGrid .out').forEach(b=>b.onclick=()=>recordAction(b.dataset.o));
-  renderSubType();
+  renderSubType();renderAssist();
   // court
   if(!courtCtx)initCourt();
   drawCourt();
@@ -1136,6 +1144,57 @@ function currentVideoTime(){
   if(S.vsrc==='yt'&&ytPlayer&&ytPlayer.getCurrentTime)return +ytPlayer.getCurrentTime().toFixed(1);
   const v=$('#vid');return v&&!isNaN(v.currentTime)?+v.currentTime.toFixed(1):null;
 }
+
+// ---------- assistenti di velocità: sequenza auto, esito standard, video veloce ----------
+const STD_OUT={battuta:'-',ricezione:'+',alzata:'+',attacco:'-',difesa:'+',muro:'-'};   // esito "normale" di ogni fondamentale
+const NEXT_FUND={battuta:'difesa',ricezione:'alzata',alzata:'attacco',attacco:'difesa',difesa:'alzata',muro:'difesa'}; // dopo azione che non chiude lo scambio
+function autoPlayer(f){
+  const oc=curOnCourt();if(!oc)return null;
+  if(f==='battuta')return oc.libZone===1?null:(oc.zones[1]||null); // chi è in zona 1 (se c'è il libero, scegli tu)
+  if(f==='alzata')return Object.values(oc.zones).find(id=>isRole(S.players.find(p=>p.id===id),'palleggiatore'))||null;
+  return null;
+}
+function applyAuto(a,oc){
+  S.selFund=(oc&&oc.pt)?(phaseNow()==='K2'?'battuta':'ricezione'):(NEXT_FUND[a.fund]||'ricezione');
+  S.selPlayer=autoPlayer(S.selFund);S.setCall=null;
+}
+function renderAssist(){
+  $('#autoBtn').classList.toggle('on',S.auto);$('#autoBtn').setAttribute('aria-pressed',S.auto);
+  const o=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===STD_OUT[S.selFund]);
+  $('#stdBtn').textContent='✓ Standard · '+(o?o.lbl:'');
+  $('#nextHint').textContent=S.auto?'Fondamentale e giocatore proposti in automatico':'';
+}
+$('#stdBtn').onclick=()=>recordAction(STD_OUT[S.selFund]);
+$('#autoBtn').onclick=()=>{S.auto=!S.auto;try{localStorage.setItem('vbscout.auto',S.auto?'1':'0');}catch(_){}renderScout();toast(S.auto?'🔁 Sequenza automatica attiva':'Sequenza automatica spenta');};
+
+// video: auto-pausa mentre tagghi, ripresa dopo l'esito
+function vidPlaying(){return S.vsrc==='yt'?!!(ytPlayer&&ytPlayer.getPlayerState&&ytPlayer.getPlayerState()===1):!!(vEl().src&&!vEl().paused&&!vEl().ended);}
+function autoPauseTrigger(){if(!S.autoPause||S.mode!=='video'||S.resumeAfter||!vidPlaying())return;vidPause();S.resumeAfter=true;}
+function resumeVideoIfNeeded(){
+  if(!S.resumeAfter)return;S.resumeAfter=false;
+  if(S.vsrc==='yt'){if(ytPlayer&&ytPlayer.playVideo){ytPlayer.playVideo();$('#ytPlay').textContent='⏸';}}
+  else{vEl().play().catch(()=>{});$('#vPlay').textContent='⏸';}
+}
+['#scoutPlayers','#fundChips','#court','#stdBtn','#outcomeGrid'].forEach(q=>{const e=$(q);if(e)e.addEventListener('pointerdown',autoPauseTrigger,true);});
+function syncAp(){$('#apBtn').classList.toggle('on',S.autoPause);$('#apBtn').setAttribute('aria-pressed',S.autoPause);}
+$('#apBtn').onclick=()=>{S.autoPause=!S.autoPause;try{localStorage.setItem('vbscout.ap',S.autoPause?'1':'0');}catch(_){}syncAp();toast(S.autoPause?'⏸ Il video si ferma mentre tagghi e riparte dopo l\'esito':'Auto-pausa spenta');};
+syncAp();
+
+// video: velocità e salto tra scambi (usa i tempi delle battute/ricezioni già taggate)
+const RATES=[1,1.5,2,0.5];
+function applyRate(){try{vEl().playbackRate=S.rate;}catch(_){}try{ytPlayer&&ytPlayer.setPlaybackRate&&ytPlayer.setPlaybackRate(S.rate);}catch(_){}$('#spdBtn').textContent='⏩ '+S.rate+'×';}
+$('#spdBtn').onclick=()=>{S.rate=RATES[(RATES.indexOf(S.rate)+1)%RATES.length];applyRate();};
+document.addEventListener('loadedmetadata',e=>{if(e.target.id==='vid')applyRate();},true);
+async function jumpRally(dir){
+  if(!S.currentMatch)return;stopClipWatch();
+  const list=await getByIndex('actions','match',S.currentMatch.id),L=3;
+  const st=[...new Set(list.filter(a=>!a.generic&&(a.fund==='battuta'||a.fund==='ricezione')&&a.videoTime!=null).map(a=>a.videoTime))]
+    .sort((x,y)=>x-y).filter((v,i,r)=>i===0||v-r[i-1]>=4); // battuta+ricezione dello stesso scambio contano una volta
+  const t=vidNow(),tgt=dir>0?st.find(v=>v-L>t+0.5):[...st].reverse().find(v=>v-L<t-1.5);
+  if(tgt==null)return toast(dir>0?'Nessuno scambio dopo':'Nessuno scambio prima');
+  vidSeekPlay(Math.max(0,tgt-L));
+}
+$('#rlPrev').onclick=()=>jumpRally(-1);$('#rlNext').onclick=()=>jumpRally(1);
 
 // ----- punto rapido / azioni generiche -----
 $$('[data-q]').forEach(b=>b.onclick=async()=>{
@@ -1443,12 +1502,15 @@ async function recordAction(outcomeKey){
   S.lastPlayer=S.selPlayer;
   S.from=null;S.to=null;
   const fundLbl=FUNDAMENTALS[S.selFund].label;
+  if(S.auto)applyAuto(a,oc); // proposta automatica del prossimo fondamentale/giocatore
+  resumeVideoIfNeeded();
   if(S.fast){
     // O2: pronto per la prossima azione → deseleziona e torna alla scelta del giocatore
-    S.selPlayer=null;renderScout();scrollToStep($('#stepPlayer'));
+    if(!S.auto)S.selPlayer=null;renderScout();scrollToStep(S.auto&&S.selPlayer?(trajRequired()?$('#stepCourt'):$('#stepOutcome')):$('#stepPlayer'));
   }else{
     $('#courtHint').textContent=courtHintIdle();
     drawCourt();renderLog();renderSubType();
+    if(S.auto)renderScout();
   }
   const ptTxt=oc&&oc.pt?(oc.pt==='us'?' · +1 NOI':' · +1 AVV'):'';
   toast(`${fundLbl}: ${oc?oc.lbl:outcomeKey}${ptTxt}${so} ✓`);
