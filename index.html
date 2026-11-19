@@ -1029,7 +1029,7 @@ function renderLiberoBar(){
   });
 }
 // O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
-function trajRequired(){if(S.selFund==='difesa')return false;return !S.fast||S.selFund==='battuta'||S.selFund==='attacco';}
+function trajRequired(){return S.selFund==='battuta'||S.selFund==='attacco'||S.selFund==='alzata';} // traiettoria obbligatoria solo per battuta, attacco, alzata; ricezione, difesa e muro la hanno facoltativa
 // ----- sottotipo opzionale (tipo battuta / tipo attacco) dell'ultima azione registrata -----
 // In modalità standard la card sta sotto gli esiti; in modalità veloce sopra la griglia giocatori (dove si torna dopo l'esito).
 function renderSubType(){
