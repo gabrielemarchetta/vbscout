@@ -426,7 +426,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
     <div class="sec-title" id="stepFund">2 · Fondamentale</div>
     <div class="card"><div class="chips" id="fundChips"></div>
       <button class="btn sm gho full hidden" id="samePlayerBtn" style="margin-top:10px">↺ Stesso giocatore</button>
-      <div class="row" style="margin-top:10px;gap:8px"><button class="chip sm" id="autoBtn" aria-pressed="false">🔁 Sequenza auto</button><span id="nextHint" style="font-size:11px;color:var(--mut2)"></span></div></div>
+      <div class="row" style="margin-top:10px;gap:8px"><button class="chip sm" id="autoBtn" aria-pressed="false">🔁 Sequenza auto</button><button class="chip sm" id="trajLiveBtn" aria-pressed="false">📍 Traiettorie in LIVE</button><span id="nextHint" style="font-size:11px;color:var(--mut2)"></span></div></div>
 
     <!-- step 2b: set destination (only for alzata) -->
     <div class="sec-title hidden" id="setCallTitle">Alzata · dove alza</div>
@@ -659,8 +659,8 @@ const S={teams:[],players:[],matches:[],
   // O2: modalità veloce (persistita), ultimo giocatore usato; O13: eliminazione azione in attesa di conferma
   fast:false, lastPlayer:null, pendingDel:null,
 };
-S.auto=true;S.autoPause=false;S.rate=1;S.resumeAfter=false;
-try{S.fast=localStorage.getItem('vbscout.fast')==='1';S.auto=localStorage.getItem('vbscout.auto')!=='0';S.autoPause=localStorage.getItem('vbscout.ap')==='1';}catch(_){}
+S.auto=true;S.trajLive=false;S.autoPause=false;S.rate=1;S.resumeAfter=false;
+try{S.fast=localStorage.getItem('vbscout.fast')==='1';S.auto=localStorage.getItem('vbscout.auto')!=='0';S.autoPause=localStorage.getItem('vbscout.ap')==='1';S.trajLive=localStorage.getItem('vbscout.tl')==='1';}catch(_){}
 
 // ---------- helpers ----------
 const $=s=>document.querySelector(s);
@@ -1029,7 +1029,7 @@ function renderLiberoBar(){
   });
 }
 // O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
-function trajRequired(){return S.selFund==='battuta'||S.selFund==='attacco'||S.selFund==='alzata';} // traiettoria obbligatoria solo per battuta, attacco, alzata; ricezione, difesa e muro la hanno facoltativa
+function trajRequired(){if(S.mode==='live'&&!S.trajLive)return false;return S.selFund==='battuta'||S.selFund==='attacco'||S.selFund==='alzata';} // traiettoria obbligatoria solo per battuta, attacco, alzata; ricezione, difesa e muro la hanno facoltativa
 // ----- sottotipo opzionale (tipo battuta / tipo attacco) dell'ultima azione registrata -----
 // In modalità standard la card sta sotto gli esiti; in modalità veloce sopra la griglia giocatori (dove si torna dopo l'esito).
 function renderSubType(){
@@ -1162,8 +1162,10 @@ function renderAssist(){
   $('#autoBtn').classList.toggle('on',S.auto);$('#autoBtn').setAttribute('aria-pressed',S.auto);
   const o=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===STD_OUT[S.selFund]);
   $('#stdBtn').textContent='✓ Standard · '+(o?o.lbl:'');
+  $('#trajLiveBtn').classList.toggle('on',S.trajLive);$('#trajLiveBtn').setAttribute('aria-pressed',S.trajLive);
   $('#nextHint').textContent=S.auto?'Fondamentale e giocatore proposti in automatico':'';
 }
+$('#trajLiveBtn').onclick=()=>{S.trajLive=!S.trajLive;try{localStorage.setItem('vbscout.tl',S.trajLive?'1':'0');}catch(_){}renderScout();toast(S.trajLive?'📍 In LIVE la traiettoria è obbligatoria per battuta, attacco, alzata':'In LIVE la traiettoria è facoltativa: giocatore + esito');};
 $('#stdBtn').onclick=()=>recordAction(STD_OUT[S.selFund]);
 $('#autoBtn').onclick=()=>{S.auto=!S.auto;try{localStorage.setItem('vbscout.auto',S.auto?'1':'0');}catch(_){}renderScout();toast(S.auto?'🔁 Sequenza automatica attiva':'Sequenza automatica spenta');};
 
