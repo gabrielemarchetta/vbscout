@@ -577,7 +577,7 @@ const FUNDAMENTALS = {
     {k:'#',lbl:'Perfetta',     cls:'g', w:2,  pt:null},
     {k:'+',lbl:'Positiva',     cls:'p', w:1,  pt:null},
     {k:'-',lbl:'Negativa',     cls:'n', w:0,  pt:null},
-    {k:'/',lbl:'Freeball',     cls:'b', w:-1, pt:'opp'},   // ricezione che regala freeball → punto avversario
+    {k:'/',lbl:'Freeball',     cls:'b', w:-1, pt:null},    // ricezione che manda una freeball di là: lo scambio continua
     {k:'=',lbl:'Errore',       cls:'b', w:-2, pt:'opp'}]},
   attacco:   {label:'Attacco',  short:'A', outcomes:[
     {k:'#',lbl:'Punto',        cls:'g', w:2,  pt:'us'},
@@ -687,7 +687,7 @@ function confirmSheet(title,msg,okLabel='Elimina',danger=true){
     $('#cfNo').onclick=()=>{closeModal();};
   });
 }
-function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 // B8: data YYYY-MM-DD nel fuso orario locale (toISOString usa UTC)
 function localISODate(d=new Date()){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function fmtTime(s){if(isNaN(s))return'0:00';const m=Math.floor(s/60),x=Math.floor(s%60);return m+':'+String(x).padStart(2,'0');}
@@ -1083,7 +1083,8 @@ function serveSheet(title){
     <div class="row"><button class="btn pri grow" data-srv="us">🏐 Noi</button><button class="btn grow" data-srv="opp">🏐 Avversario</button></div>`);
   $$('[data-srv]').forEach(b=>b.onclick=async()=>{
     s.serve=b.dataset.srv;if(!s.firstServe)s.firstServe=s.serve;
-    await put('matches',S.currentMatch);closeModal();renderScore();
+    await put('matches',S.currentMatch);closeModal();
+    await resyncAuto();renderScout(); // propone battuta (con il giocatore in zona 1) o ricezione
     toast(s.serve==='us'?'Battiamo noi · fase K2':'Riceviamo · fase K1');
   });
 }
@@ -1158,6 +1159,20 @@ function applyAuto(a,oc){
   S.selFund=(oc&&oc.pt)?(phaseNow()==='K2'?'battuta':'ricezione'):(NEXT_FUND[a.fund]||'ricezione');
   S.selPlayer=autoPlayer(S.selFund);S.setCall=null;
 }
+// riallinea la proposta automatica all'ultima azione del set corrente (dopo annulla, punto rapido, inizio set)
+function autoFromLast(last){
+  if(!S.auto)return;
+  const ends=!last||last.generic||!!actionPoint(last);
+  S.selFund=ends?(phaseNow()==='K2'?'battuta':'ricezione'):(NEXT_FUND[last.fund]||'ricezione');
+  S.selPlayer=autoPlayer(S.selFund);S.setCall=null;S.from=null;S.to=null;
+}
+async function resyncAuto(){
+  const m=S.currentMatch;if(!S.auto||!m)return;
+  const acts=(await getByIndex('actions','match',m.id))
+    .filter(a=>a.setNum===m.curSet+1&&a.id!==S.pendingDel?.id&&!(a.generic&&a.gtype==='correction'))
+    .sort((a,b)=>a.ts-b.ts);
+  autoFromLast(acts[acts.length-1]);
+}
 function renderAssist(){
   $('#autoBtn').classList.toggle('on',S.auto);$('#autoBtn').setAttribute('aria-pressed',S.auto);
   const o=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===STD_OUT[S.selFund]);
@@ -1199,8 +1214,10 @@ async function jumpRally(dir){
 $('#rlPrev').onclick=()=>jumpRally(-1);$('#rlNext').onclick=()=>jumpRally(1);
 
 // ----- punto rapido / azioni generiche -----
+let quickBusy=false;
 $$('[data-q]').forEach(b=>b.onclick=async()=>{
   if(!S.currentMatch)return toast('Nessuna partita attiva');
+  if(quickBusy)return;quickBusy=true;setTimeout(()=>{quickBusy=false;},400);
   const [side,gtype]=b.dataset.q.split('|');
   const m=S.currentMatch,s=m.sets[m.curSet];
   const usPoint=(side==='us'&&gtype==='point')||(side==='opp'&&gtype==='error');
@@ -1209,7 +1226,9 @@ $$('[data-q]').forEach(b=>b.onclick=async()=>{
     setNum:m.curSet+1,rotation:curSetterZone(),phase:phaseNow(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
   const so=applyServeAfterPoint(a,usPoint?'us':'opp'); // O3
   await put('matches',m);
-  await put('actions',a);if(a.autoRot)renderScout();else{renderScore();renderLog();} // rotazione → aggiorna anche giocatori in campo
+  await put('actions',a);
+  if(S.auto){autoFromLast(a);renderScout();}
+  else if(a.autoRot)renderScout();else{renderScore();renderLog();} // rotazione → aggiorna anche giocatori in campo
   toast((usPoint?'Punto NOI ✓':'Punto AVV.')+so);
 });
 
@@ -1223,7 +1242,7 @@ $('#rotBtn').onclick=async()=>{
 };
 $('#setNumBtn').onclick=async()=>{
   const m=S.currentMatch;if(!m||m.sets.length<2)return;
-  m.curSet=(m.curSet+1)%m.sets.length;await put('matches',m);renderScout();toast('Set '+(m.curSet+1)); // ogni set ha la sua formazione
+  m.curSet=(m.curSet+1)%m.sets.length;await put('matches',m);await resyncAuto();renderScout();toast('Set '+(m.curSet+1)); // ogni set ha la sua formazione
 };
 $('#lineupBtn').onclick=()=>lineupSheet();
 $('#serveBtn').onclick=()=>serveSheet(); // O3
@@ -1305,7 +1324,8 @@ function lineupSheet(){
       libIn:[libero,libero2].includes(old.libIn)?old.libIn:null};
     set.firstServe=sv;
     if(!started)set.serve=sv; // a set iniziato la fase corrente la decide il punteggio
-    await put('matches',m);closeModal();renderScout();
+    await put('matches',m);closeModal();
+    await resyncAuto();renderScout(); // inizio set: battitore in zona 1 già selezionato
     toast('Formazione set '+(m.curSet+1)+' · '+rotLabelText()+' · '+(set.serve==='us'?'battiamo noi (K2)':'riceviamo (K1)'));
   };
   const lr=$('#luReset');if(lr)lr.onclick=async()=>{set.lu.rotStep=0;await put('matches',m);closeModal();renderScout();toast('Rotazione azzerata');};
@@ -1469,7 +1489,13 @@ function zoneOf(p){
 }
 
 // ----- record -----
+let recBusy=false; // evita doppie registrazioni con il doppio tocco
 async function recordAction(outcomeKey){
+  if(recBusy)return;
+  recBusy=true;
+  try{await recordActionInner(outcomeKey);}finally{setTimeout(()=>{recBusy=false;},250);}
+}
+async function recordActionInner(outcomeKey){
   if(!S.selPlayer)return toast('Seleziona un giocatore');
   // O2: in modalità veloce la traiettoria è facoltativa (tranne battuta/attacco); se iniziata va completata
   const hasTraj=!!(S.from&&S.to);
@@ -1547,8 +1573,8 @@ async function renderLog(){
     const o=fund?fund.outcomes.find(x=>x.k===a.outcome):null;
     const col=OUTCOME_COLOR[o?.cls]||'#888';
     const sc=a.setCall?` <span style="color:var(--teal);font-size:10px">${esc(a.setCall)}</span>`:'';
-    const zn=a.fund==='difesa'&&a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.toZone}</span>`
-      :a.fromZone||a.toZone?` <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>`:'';
+    const zn=a.fund==='difesa'&&a.toZone?` <span style="color:var(--mut2);font-size:11px">${esc(a.toZone)}</span>`
+      :a.fromZone||a.toZone?` <span style="color:var(--mut2);font-size:11px">${esc(a.fromZone)}→${esc(a.toZone)}</span>`:'';
     const pz=a.playerZone?` <span style="color:var(--teal);font-size:10px;font-weight:700" title="Zona in campo al momento dell'azione">Z${a.playerZone}·${esc(shortName(p))}</span>`:'';
     const stp=subtypeOf(a),stTxt=stp?` <span style="color:var(--mut);font-size:10px">(${stp.lbl})</span>`:'';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
@@ -1581,7 +1607,10 @@ async function commitPendingDelete(){
     if(!later&&a.prevServe){s.serve=a.prevServe;if(a.autoRot){const lu=s.lu||m;lu.rotStep=a.prevRotStep;}changed=true;}
   }
   if(changed)await put('matches',m);
-  if(S.currentMatch?.id===a.matchId)changed?renderScout():renderLog(); // renderScout aggiorna anche griglia in campo
+  if(S.currentMatch?.id===a.matchId){
+    if(S.auto&&!later){await resyncAuto();renderScout();} // l'azione annullata era l'ultima: riallinea la proposta automatica
+    else changed?renderScout():renderLog(); // renderScout aggiorna anche griglia in campo
+  }
 }
 
 // ----- video -----
@@ -1881,7 +1910,7 @@ function setBreakdown(matches,acts,pid){
         ace:cnt('battuta',['#']),serr:cnt('battuta',['=']),atkPt:cnt('attacco',['#']),
         kill:at.n?at.killPct:null,atkN:at.n,recPos:rc.n?rc.posPct:null,recN:rc.n,
         blk:cnt('muro',['#']),dig:HAS_DIFESA?cnt('difesa',['#','+']):null,
-        ourErr:sk.filter(a=>a.outcome==='='||a.outcome==='/').length+genUsErr,oppErr,acts:sa});
+        ourErr:sk.filter(a=>actionPoint(a)==='opp').length+genUsErr,oppErr,acts:sa});
     }
   }
   return rows;
@@ -2051,11 +2080,11 @@ async function computeStats(){
   if(!skill.length){$('#playerStatsBox').innerHTML='<div class="empty"><div class="big">📊</div>Nessuna azione tecnica per questo filtro</div>';return;}
   const rowPls=pl?[pl]:pls;
   if(statFund==='all'){
-    // vista generale: Err conta sia gli errori (=) sia i murati (/)
+    // vista generale: Err conta le azioni che danno punto all'avversario (errori e murati)
     const rows=rowPls.map(p=>{
       const pa=skill.filter(a=>a.playerId===p.id);if(!pa.length)return null;
       const pP=pa.filter(a=>actionPoint(a)==='us').length;
-      const pE=pa.filter(a=>a.outcome==='='||a.outcome==='/').length;
+      const pE=pa.filter(a=>actionPoint(a)==='opp').length; // errori che danno punto all'avversario (=, murato)
       const vids=pa.filter(a=>a.videoTime>0).sort((a,b)=>a.ts-b.ts).map(a=>a.id);
       return {p,t:pa.length,pP,pE,posPct:pct(pa.filter(a=>['#','+'].includes(a.outcome)).length,pa.length),saldo:pP-pE,vids};
     }).filter(Boolean).sort((a,b)=>b.saldo-a.saldo||b.pP-a.pP);
@@ -2145,7 +2174,7 @@ async function buildReportHtml(matchId){
       const pa=sk.filter(a=>a.playerId===p.id);if(!pa.length)return '';
       const fs=FUND_KEYS.filter(f=>pa.some(a=>a.fund===f));
       return fs.map((f,j)=>{const fa=pa.filter(a=>a.fund===f);
-        const pts=fa.filter(a=>actionPoint(a)==='us').length,err=fa.filter(a=>a.outcome==='='||a.outcome==='/').length;
+        const pts=fa.filter(a=>actionPoint(a)==='us').length,err=fa.filter(a=>actionPoint(a)==='opp').length;
         return `<tr${j===0?' class="pfirst"':''}>${j===0?`<td class="n" rowspan="${fs.length}">${p.number}</td><td class="l" rowspan="${fs.length}">${e(p.name)}</td>`:''}<td class="l">${FUNDAMENTALS[f].label}</td><td>${fa.length}</td><td>${pts||''}</td><td>${err||''}</td></tr>`;}).join('');
     }).join('');
     if(!body)return '';
@@ -2252,7 +2281,7 @@ async function renderMap(){
   $('#mapVidList').innerHTML=vids.length?
     `<button class="btn pri full" data-clips="${vids.map(a=>a.id).join(',')}" style="margin-bottom:8px">▶ Riproduci tutte in sequenza (${vids.length})</button>`+
     vids.slice(-60).reverse().map(a=>`<div class="logrow"><span class="dot" style="background:${outcomeColor(a)}"></span>
-      ${actionLabel(a)} <span style="color:var(--mut2);font-size:11px">${a.fromZone||''}→${a.toZone||''}</span>
+      ${actionLabel(a)} <span style="color:var(--mut2);font-size:11px">${esc(a.fromZone)}→${esc(a.toZone)}</span>
       <span class="meta">${vlinkHtml(a)}</span></div>`).join('')
     :'<div class="empty" style="padding:18px">Nessuna azione con riferimento video. Tagga in modalità <b>VIDEO</b> per poterle rivedere da qui.</div>';
 }
@@ -2367,7 +2396,7 @@ $('#importFile').onchange=e=>{
       const d=JSON.parse(rd.result);if(d.app!=='vbscout')throw 0;
       if(!await confirmSheet('Ripristinare il backup?','I dati del file verranno uniti a quelli attuali (i record con lo stesso ID vengono sovrascritti).','Ripristina',false))return;
       for(const t of d.teams||[])await put('teams',t);
-      for(const p of d.players||[])await put('players',p);
+      for(const p of d.players||[]){p.number=parseInt(p.number)||0;await put('players',p);} // numero sempre numerico (niente HTML da file esterni)
       for(const m of d.matches||[])await put('matches',m);
       for(const a of d.actions||[])await put('actions',a);
       await loadAll();renderMatchView();renderCtx();toast('Backup ripristinato');
@@ -2415,6 +2444,8 @@ if('serviceWorker' in navigator){
 //  BOOT
 // =========================================================
 (async function(){
+  // chiede al browser di non cancellare i dati (IndexedDB) quando serve spazio o dopo inattività (Safari)
+  try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))await navigator.storage.persist();}catch(_){}
   await openDB();
   await loadAll();
   renderCtx();

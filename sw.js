@@ -9,7 +9,7 @@
    - Tutti i percorsi sono RELATIVI: funziona in qualunque cartella del repo.
 */
 
-const CACHE_VERSION = 'vbscout-v13';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
+const CACHE_VERSION = 'vbscout-v14';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
 const APP_SHELL = [
   './',
   './index.html',
@@ -41,6 +41,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  // solo file della nostra app: YouTube, Google Fonts ecc. vanno direttamente in rete
+  // (cache-first su script esterni rischia di tenere versioni vecchie, es. YouTube IFrame API)
+  if (new URL(req.url).origin !== self.location.origin) return;
 
   const isHTML = req.mode === 'navigate' ||
     (req.headers.get('accept') || '').includes('text/html');
@@ -50,8 +53,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(req)
         .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then(c => c.put(req, copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then(c => c.put(req, copy));
+          }
           return res;
         })
         .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
@@ -61,8 +66,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(req).then(cached =>
         cached || fetch(req).then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then(c => c.put(req, copy));
+          if (res.ok) {   // non salvare in cache risposte di errore (404, 500...)
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then(c => c.put(req, copy));
+          }
           return res;
         })
       )
