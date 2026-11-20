@@ -9,14 +9,16 @@
    - Tutti i percorsi sono RELATIVI: funziona in qualunque cartella del repo.
 */
 
-const CACHE_VERSION = 'vbscout-v16';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
+const CACHE_VERSION = 'vbscout-v17';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './icon-maskable-512.png'
+  './icon-maskable-512.png',
+  './vendor/jspdf.umd.min.js',      // report PDF anche offline
+  './vendor/html2canvas.min.js'
 ];
 
 // --- install: precarica l'app shell ---
