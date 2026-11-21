@@ -2551,7 +2551,9 @@ async function buildReportPdf(matchId){
     // punti di taglio "puliti": inizio di titoli, righe di tabella e riquadri dei set
     const top0=d.body.getBoundingClientRect().top;
     const tops=sel=>[...new Set([...d.querySelectorAll(sel)].map(el=>Math.round(el.getBoundingClientRect().top-top0)))].sort((a,b)=>a-b);
-    const big=tops('h2'),cuts=tops('h2,tr,.setbox,.two,.legend'); // preferisce andare a capo prima di una sezione
+    // punti di taglio ammessi: titoli, riquadri dei set, righe delle tabelle principali.
+    // Mai dentro un riquadro set (le sue righe non sono candidate) → il riquadro resta intero.
+    const big=tops('h2'),cuts=tops('h2,body > table tr,.two tr,.setbox,.two,.legend');
     const totalH=canvas.height/scale;let y=0,first=true;
     while(y<totalH-2){
       let end=Math.min(totalH,y+pageH);
