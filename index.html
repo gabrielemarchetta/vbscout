@@ -324,7 +324,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <span class="grow"></span>
         <button class="chip sm srv" id="serveBtn" aria-label="Fase corrente: tocca per indicare chi batte">❔ BAT?</button>
         <button class="chip sm" id="rotBackBtn" aria-label="Rotazione indietro" title="Rotazione indietro">↺</button><button class="chip sm rot" id="rotBtn" aria-label="Avanza rotazione" title="Rotazione avanti">ROT <b id="rotLabel">—</b> ↻</button>
-        <button class="chip sm" id="lineupBtn">⚙ Formazione</button>
+        <button class="chip sm" id="subBtn" aria-label="Cambio giocatore">🔄 Cambio</button><button class="chip sm" id="lineupBtn">⚙ Formazione</button>
         <button class="chip sm fast" id="fastBtn" aria-pressed="false" aria-label="Modalità scouting veloce">⚡ Veloce</button>
       </div>
       <div class="libbar hidden" id="liberoBar" role="group" aria-label="Libero in campo"></div>
@@ -414,7 +414,12 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         <button class="out g" data-q="us|point"><span class="badge">✓</span><span class="lbl">Punto nostro<br><small style="color:var(--mut);font-weight:600">generico → +1 NOI</small></span></button>
         <button class="out g" data-q="opp|error"><span class="badge">✓</span><span class="lbl">Errore avversario<br><small style="color:var(--mut);font-weight:600">→ +1 NOI</small></span></button>
         <button class="out b" data-q="us|error"><span class="badge">✗</span><span class="lbl">Errore/fallo nostro<br><small style="color:var(--mut);font-weight:600">→ +1 AVV.</small></span></button>
-        <button class="out b" data-q="opp|point"><span class="badge">✗</span><span class="lbl">Punto avversario<br><small style="color:var(--mut);font-weight:600">→ +1 AVV.</small></span></button>
+        <div style="grid-column:1/-1;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700;margin-top:2px">Punto avversario → +1 AVV.</div>
+        <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:9px">
+          <button class="out b" data-q="opp|point|attacco" style="padding:12px 8px"><span class="badge">✗</span><span class="lbl">Attacco avv.</span></button>
+          <button class="out b" data-q="opp|point|muro" style="padding:12px 8px"><span class="badge">✗</span><span class="lbl">Muro avv.</span></button>
+          <button class="out b" data-q="opp|point|altro" style="padding:12px 8px"><span class="badge">✗</span><span class="lbl">Altro avv.</span></button>
+        </div>
       </div>
     </div>
 
@@ -846,6 +851,7 @@ function matchSheet(m){
     <label class="fld" style="margin-top:12px">Campo</label>
     <div class="seg" id="haSeg"><button data-ha="home" class="${!m||m.homeAway==='home'?'on':''}">In casa</button><button data-ha="away" class="${m?.homeAway==='away'?'on':''}">Trasferta</button></div>
     <button class="btn pri full" id="mSave" style="margin-top:16px">${ed?'Salva':'Crea e attiva'}</button>
+    ${ed?'<button class="btn gho full" id="mDup" style="margin-top:8px">📹 Duplica per scout da video</button>':''}
     ${ed?'<button class="btn danger gho full" id="mDel" style="margin-top:8px">Elimina partita</button>':''}`);
   let ha=m?.homeAway||'home';
   $$('#haSeg button').forEach(b=>b.onclick=()=>{ha=b.dataset.ha;$$('#haSeg button').forEach(x=>x.classList.toggle('on',x===b));});
@@ -856,6 +862,17 @@ function matchSheet(m){
     await put('matches',obj);
     if(!m){S.matches.push(obj);S.currentMatch=obj;}else{const i=S.matches.findIndex(x=>x.id===obj.id);S.matches[i]=obj;}
     await saveState();closeModal();renderMatchView();renderCtx();toast('Partita salvata');
+  };
+  // nuova partita vuota con le stesse formazioni per set: lo scout da video non si somma a quello dal vivo
+  if(ed)$('#mDup').onclick=async()=>{
+    const tpl=(m.sets||[]).map(s=>{const l=s.lu;if(!l)return null;const c=JSON.parse(JSON.stringify(l));
+      if(c.startLineup){c.lineup=c.startLineup;c.setterId=c.startSetterId||c.setterId;delete c.startLineup;delete c.startSetterId;}c.rotStep=0;c.libIn=null;c.firstServe=s.firstServe||null;
+      const sz=+Object.keys(c.lineup).find(z=>c.lineup[z]===c.setterId);if(sz)c.setterZone=sz;return c;});
+    const nm={id:uid(),teamId:m.teamId,createdAt:Date.now(),opponent:m.opponent+' (video)',date:m.date,homeAway:m.homeAway,
+      sets:[{us:0,them:0}],curSet:0,luTemplate:tpl,sourceMatch:m.id};
+    await put('matches',nm);S.matches.push(nm);S.currentMatch=nm;
+    await saveState();closeModal();renderMatchView();renderCtx();
+    toast('📹 Partita video creata e attivata: in Scout scegli VIDEO e conferma la formazione');
   };
   if(ed)$('#mDel').onclick=async()=>{
     if(!await confirmSheet('Eliminare la partita?','Verranno eliminate anche tutte le azioni registrate per questa partita. L\'operazione non si può annullare.','Elimina partita'))return;
@@ -961,7 +978,9 @@ function renderScout(){
     $$('#setCallChips .chip').forEach(b=>b.onclick=()=>{S.setCall=S.setCall===b.dataset.sc?null:b.dataset.sc;renderScout();});
   }
   // outcomes
-  const outs=FUNDAMENTALS[S.selFund].outcomes;
+  // LIVE: dell'attacco si segnano solo gli esiti che chiudono lo scambio (punto, errore, murato)
+  const liveAtk=S.mode==='live'&&S.selFund==='attacco';
+  const outs=FUNDAMENTALS[S.selFund].outcomes.filter(o=>!liveAtk||['#','=','/'].includes(o.k));
   $('#outcomeGrid').innerHTML=outs.map(o=>`<button class="out ${o.cls}" data-o="${o.k}"><span class="badge">${o.k}</span><span class="lbl">${o.lbl}</span></button>`).join('');
   $$('#outcomeGrid .out').forEach(b=>b.onclick=()=>recordAction(b.dataset.o));
   renderSubType();renderAssist();
@@ -1162,6 +1181,8 @@ $$('[data-pt]').forEach(b=>b.onclick=async()=>{
 });
 
 // ----- helper punteggio (condivisi da log, delete e statistiche) -----
+// azioni che non sono scambi: correzioni manuali del punteggio e cambi giocatore
+const isMeta=a=>!!a&&a.generic&&(a.gtype==='correction'||a.gtype==='sub');
 function isUsGenericPoint(a){return (a.side==='us'&&a.gtype==='point')||(a.side==='opp'&&a.gtype==='error');}
 // variazione di punteggio {us,them} prodotta da un'azione
 function actionScoreDelta(a){
@@ -1172,7 +1193,9 @@ function actionScoreDelta(a){
 const GENERIC_LABELS={'us|point':'Punto nostro','opp|error':'Errore avversario','us|error':'Errore/fallo nostro','opp|point':'Punto avversario'};
 function genericLabel(a){
   if(a.gtype==='correction')return 'Correzione manuale '+(a.side==='us'?'NOI':'AVV.')+' '+(a.delta>0?'+1':'−1');
-  return GENERIC_LABELS[a.side+'|'+a.gtype]||'Azione';
+  if(a.gtype==='sub'){const pi=S.players.find(p=>p.id===a.subIn),po=S.players.find(p=>p.id===a.subOut);return `Cambio: entra #${pi?pi.number:'?'}${pi?' '+pi.name:''} per #${po?po.number:'?'}`;}
+  const base=GENERIC_LABELS[a.side+'|'+a.gtype]||'Azione';
+  return a.gsub&&a.side==='opp'&&a.gtype==='point'?base+' · '+({attacco:'attacco',muro:'muro',altro:'altro'}[a.gsub]||a.gsub):base;
 }
 $('#newSetBtn').onclick=async()=>{
   const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;S.subPending=null;
@@ -1215,7 +1238,7 @@ function autoFromLast(last){
 async function resyncAuto(){
   const m=S.currentMatch;if(!m)return;
   const acts=(await getByIndex('actions','match',m.id))
-    .filter(a=>a.setNum===m.curSet+1&&a.id!==S.pendingDel?.id&&!(a.generic&&a.gtype==='correction'))
+    .filter(a=>a.setNum===m.curSet+1&&a.id!==S.pendingDel?.id&&!isMeta(a))
     .sort((a,b)=>a.ts-b.ts);
   autoFromLast(acts[acts.length-1]);
 }
@@ -1223,6 +1246,7 @@ function renderAssist(){
   $('#autoBtn').classList.toggle('on',S.auto);$('#autoBtn').setAttribute('aria-pressed',S.auto);
   const o=FUNDAMENTALS[S.selFund].outcomes.find(x=>x.k===STD_OUT[S.selFund]);
   $('#stdBtn').textContent='✓ Standard · '+(o?o.lbl:'');
+  $('#stdBtn').classList.toggle('hidden',S.mode==='live'&&S.selFund==='attacco');
   const live=S.mode==='live';
   $('#autoBtn').classList.toggle('hidden',live);
   $('#nextHint').textContent=live?'Battitore proposto a inizio scambio':S.auto?'Fondamentale e giocatore proposti in automatico':'';
@@ -1268,11 +1292,11 @@ let quickBusy=false;
 $$('[data-q]').forEach(b=>b.onclick=async()=>{
   if(!S.currentMatch)return toast('Nessuna partita attiva');
   if(quickBusy)return;quickBusy=true;setTimeout(()=>{quickBusy=false;},400);
-  const [side,gtype]=b.dataset.q.split('|');
+  const [side,gtype,gsub]=b.dataset.q.split('|');
   const m=S.currentMatch,s=m.sets[m.curSet];
   const usPoint=(side==='us'&&gtype==='point')||(side==='opp'&&gtype==='error');
   if(usPoint)s.us++;else s.them++;
-  const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side,gtype,
+  const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side,gtype,gsub:gsub||null,
     setNum:m.curSet+1,rotation:curSetterZone(),phase:phaseNow(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
   const so=applyServeAfterPoint(a,usPoint?'us':'opp'); // O3
   await put('matches',m);
@@ -1312,6 +1336,35 @@ $('#samePlayerBtn').onclick=()=>{ // O2
   scrollToStep(trajRequired()&&!(S.from&&S.to)?$('#stepCourt'):$('#stepOutcome'));
 };
 
+// ----- cambio giocatore: chi esce prende il posto (zona di partenza) di chi entra nella formazione del set -----
+$('#subBtn').onclick=()=>{
+  const m=S.currentMatch;if(!m)return toast('Nessuna partita attiva');
+  const lu=curLU();if(!lu||!lu.lineup)return lineupSheet();
+  const zp=curZonePlayers(),libs=luLiberos(lu),onIds=Object.values(lu.lineup);
+  const bench=teamPlayers().filter(p=>!onIds.includes(p.id)&&!libs.includes(p.id));
+  if(!bench.length)return toast('Nessun giocatore in panchina');
+  const pl=id=>S.players.find(p=>p.id===id);
+  let outId=null,inId=null;
+  modal(`<h2 style="margin:0 0 6px;font-size:22px">🔄 Cambio</h2>
+    <label class="fld">Esce</label><div class="chips" id="subOut">${[4,3,2,5,6,1].map(z=>{const p=pl(zp[z]);return p?`<button class="chip" data-so="${p.id}">Z${z} · #${p.number} ${esc(p.name)}</button>`:'';}).join('')}</div>
+    <label class="fld" style="margin-top:12px">Entra</label><div class="chips" id="subIn">${bench.map(p=>`<button class="chip teal" data-si="${p.id}">#${p.number} ${esc(p.name)} <small style="opacity:.7">${esc(String(p.role||'').slice(0,4))}</small></button>`).join('')}</div>
+    <button class="btn pri full" id="subOk" style="margin-top:16px" disabled>Conferma cambio</button>`);
+  const upd=()=>{$$('#subOut .chip').forEach(c=>c.classList.toggle('on',c.dataset.so===outId));$$('#subIn .chip').forEach(c=>c.classList.toggle('on',c.dataset.si===inId));$('#subOk').disabled=!(outId&&inId);};
+  $$('#subOut .chip').forEach(c=>c.onclick=()=>{outId=c.dataset.so;upd();});
+  $$('#subIn .chip').forEach(c=>c.onclick=()=>{inId=c.dataset.si;upd();});
+  $('#subOk').onclick=async()=>{
+    if(!outId||!inId)return;
+    const z0=+Object.keys(lu.lineup).find(k=>lu.lineup[k]===outId);if(!z0)return;
+    if(!lu.startLineup){lu.startLineup={...lu.lineup};lu.startSetterId=lu.setterId;} // formazione di partenza del set (per il set successivo / video)
+    lu.lineup[z0]=inId;if(lu.setterId===outId)lu.setterId=inId;
+    const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side:'us',gtype:'sub',subOut:outId,subIn:inId,subZone:z0,
+      setNum:m.curSet+1,rotation:curSetterZone(),phase:phaseNow(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
+    await put('matches',m);await put('actions',a);closeModal();
+    await resyncAuto();renderScout(); // battitore e giocatori in campo aggiornati
+    const pi=pl(inId),po=pl(outId);toast(`🔄 Entra #${pi.number} ${pi.name} per #${po.number}`);
+  };
+};
+
 function lineupSheet(){
   const m=S.currentMatch;if(!m)return toast('Nessuna partita attiva');
   const pls=teamPlayers();
@@ -1319,17 +1372,19 @@ function lineupSheet(){
   const set=curSetObj();if(!set)return;
   // default: formazione già salvata per questo set → set precedente → formazione legacy a livello partita
   const prev=m.sets.slice(0,m.curSet).reverse().find(x=>x.lu)?.lu;
-  const src=set.lu||prev||(m.lineup?m:null)||{};
-  const lu=src.lineup||{};
+  const tpl=m.luTemplate&&m.luTemplate[m.curSet];
+  const src=set.lu||tpl||prev||(m.lineup?m:null)||{};
+  const lu=(!set.lu&&src.startLineup)||src.lineup||{};
+  const setterSrc=(!set.lu&&src.startSetterId)||src.setterId; // palleggiatore di partenza (non il sostituto)
   const started=(set.us+set.them)>0;
   // libFirst: nei select dei liberi i giocatori con ruolo Libero compaiono per primi
   const opt=(sel,libFirst)=>{const list=libFirst?[...pls.filter(isLibero),...pls.filter(p=>!isLibero(p))]:pls;
     return `<option value="">—</option>`+list.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>#${p.number} ${esc(p.name)} · ${esc(String(p.role||'').slice(0,4))}</option>`).join('');};
   const cell=z=>`<div class="lucell ${[4,3,2].includes(z)?'net':''}"><div class="z">Zona ${z}${[4,3,2].includes(z)?' · rete':''}</div><select data-z="${z}" aria-label="Giocatore in zona ${z}">${opt(lu[z])}</select></div>`;
-  const srv=started?(set.firstServe||''):(set.serve||set.firstServe||'');
+  const srv=started?(set.firstServe||''):(set.serve||set.firstServe||(tpl&&tpl.firstServe)||'');
   modal(`<h2 style="margin:0 0 4px;font-size:22px">Formazione · Set ${m.curSet+1}</h2>
     <p style="color:var(--mut);margin:0 0 12px;font-size:13px">Imposta una volta chi parte in ciascuna zona: l'app ruota da sola a ogni cambio palla e mostra i 6 in campo sul campo da gioco.</p>
-    ${prev&&!set.lu?'<p style="color:var(--teal);font-size:12px;margin:0 0 8px">Precompilata con la formazione di partenza del set precedente: ruotala se partite da un\'altra rotazione.</p>':''}
+    ${tpl&&!set.lu?'<p style="color:var(--teal);font-size:12px;margin:0 0 8px">Precompilata con la formazione di questo set nello scout dal vivo.</p>':prev&&!set.lu?'<p style="color:var(--teal);font-size:12px;margin:0 0 8px">Precompilata con la formazione di partenza del set precedente: ruotala se partite da un\'altra rotazione.</p>':''}
     <div class="lupv" id="luPrev" aria-label="Anteprima formazione"></div>
     <div class="row" style="gap:8px;margin:8px 0">
       <button type="button" class="btn sm gho grow" id="luRotBack">↺ Ruota indietro</button>
@@ -1338,7 +1393,7 @@ function lineupSheet(){
     <div class="lugrid">${[4,3,2].map(cell).join('')}</div>
     <div class="lugrid" style="margin-top:8px">${[5,6,1].map(cell).join('')}</div>
     <label class="fld" style="margin-top:14px">Palleggiatore</label>
-    <select class="inp" id="luSetter">${opt(src.setterId)}</select>
+    <select class="inp" id="luSetter">${opt(setterSrc)}</select>
     <div class="row" style="gap:8px;margin-top:12px">
       <div class="grow"><label class="fld">Libero 1 (opz.)</label><select class="inp" id="luLibero">${opt(src.libero,true)}</select></div>
       <div class="grow"><label class="fld">Libero 2 (opz.)</label><select class="inp" id="luLibero2">${opt(src.libero2,true)}</select></div>
@@ -1355,7 +1410,7 @@ function lineupSheet(){
     <button class="btn pri full" id="luSave" style="margin-top:16px">✓ Conferma formazione</button>
     ${set.lu&&set.lu.setterZone?'<button class="btn gho full" id="luReset" style="margin-top:8px">↺ Azzera rotazione (torna a P'+set.lu.setterZone+')</button>':''}`);
   const byId=id=>pls.find(p=>p.id===id);
-  let setterTouched=!!src.setterId;
+  let setterTouched=!!setterSrc;
   const readLineup=()=>{const l={};$$('[data-z]').forEach(x=>{l[+x.dataset.z]=x.value||null;});return l;};
   const preview=()=>{
     const l=readLineup();
@@ -1397,6 +1452,7 @@ function lineupSheet(){
     const old=set.lu||(m.lineup&&!prev?m:{}); // partite legacy: eredita rotazione dalla formazione a livello partita
     const keepRot=started&&old.lineup;
     set.lu={lineup,setterId,setterZone,libero,libero2,
+      ...(keepRot&&old.startLineup?{startLineup:old.startLineup,startSetterId:old.startSetterId}:{}),
       rotStep:keepRot?(old.rotStep||0):0,
       libIn:[libero,libero2].includes(old.libIn)?old.libIn:null,
       libAuto:old.libAuto!==false,libSplit:!!(libero&&libero2&&$('#luSplit').checked)};
@@ -1634,6 +1690,11 @@ async function renderLog(){
     const ph=a.phase?` <span style="color:var(--mut2);font-size:10px">${a.phase}</span>`:'';
     const rot=(a.rotation?` <span style="color:var(--blue);font-size:10px">P${a.rotation}</span>`:'')+ph;
     if(a.generic){
+      if(a.gtype==='sub'){
+        return `<div class="logrow"><span class="dot" style="background:var(--blue)"></span>
+          <b style="color:var(--blue)">🔄</b> ${esc(genericLabel(a))}${rot}
+          <span class="meta">${t}${delBtn}</span></div>`;
+      }
       if(a.gtype==='correction'){
         const sc=(a.delta>0?'+1 ':'−1 ')+(a.side==='us'?'NOI':'AVV');
         return `<div class="logrow"><span class="dot" style="background:var(--mut)"></span>
@@ -1684,6 +1745,8 @@ async function commitPendingDelete(){
   if(s){
     const d=actionScoreDelta(a);
     if(d.us||d.them){s.us=Math.max(0,s.us-d.us);s.them=Math.max(0,s.them-d.them);changed=true;}
+    // cambio annullato: rientra il giocatore uscito (se nel frattempo non ci sono stati altri cambi in quella zona)
+    if(a.generic&&a.gtype==='sub'){const lu=s.lu||m;if(lu.lineup&&lu.lineup[a.subZone]===a.subIn){lu.lineup[a.subZone]=a.subOut;if(lu.setterId===a.subIn)lu.setterId=a.subOut;changed=true;}}
     // O3: se era l'ultima azione, ripristina anche battuta e rotazione precedenti
     if(!later&&a.prevServe){s.serve=a.prevServe;if(a.autoRot){const lu=s.lu||m;lu.rotStep=a.prevRotStep;}changed=true;}
   }
@@ -1912,6 +1975,7 @@ function renderStatFundChips(){
 function actionPoint(a){
   // correzione manuale: conta come punto solo se aggiunge (+1); un −1 annulla, non assegna
   if(a.generic&&a.gtype==='correction')return a.delta>0?a.side:null;
+  if(a.generic&&a.gtype==='sub')return null;
   if(a.generic)return isUsGenericPoint(a)?'us':'opp';
   const f=FUNDAMENTALS[a.fund];const o=f&&f.outcomes.find(x=>x.k===a.outcome);return o?o.pt:null;
 }
@@ -1936,9 +2000,17 @@ function fundMetrics(fund,list,nSets){
     m.eff=n?Math.round((c['#']*2+c['+']-c['/']-c['=']*2)/(n*2)*100):null; // pesi 2/1/0/−1/−2 su tot×2
     m.main=m.posPct;m.mainTxt=fmtPct(m.posPct);m.mainLbl='Pos%';
   }else if(fund==='attacco'){
+    // scout LIVE: si registrano solo gli attacchi che chiudono lo scambio → Kill%/Eff% non avrebbero senso
+    m.closingOnly=n>0&&list.every(a=>a.mode!=='video');
+    m.saldo=c['#']-c['=']-c['/'];
+    if(m.closingOnly){
+      m.killPct=null;m.errPct=null;m.blkPct=null;m.touchPct=null;m.eff=null;
+      m.main=m.saldo;m.mainTxt=(m.saldo>0?'+':'')+m.saldo;m.mainLbl='Saldo';
+    }else{
     m.killPct=pct(c['#'],n);m.errPct=pct(c['='],n);m.blkPct=pct(c['/'],n);m.touchPct=pct(c['v'],n);
     m.eff=pct(c['#']-c['=']-c['/'],n);                            // (punti − errori − murati)/tot
     m.main=m.eff;m.mainTxt=fmtPct(m.eff,true);m.mainLbl='Eff%';
+    }
   }else if(fund==='muro'){
     m.pts=c['#'];m.errPct=pct(c['='],n);m.perSet=nSets?+(c['#']/nSets).toFixed(2):null;
     m.favPct=pct(c['#']+c['+'],n);                                // punti + tocchi favorevoli / tot
@@ -1963,13 +2035,13 @@ function countPlayedSets(matches,acts){
 const FUND_COLS={
   battuta:  [['Ace',m=>m.c['#']],['Err',m=>m.c['=']],['Ace%',m=>fmtPct(m.acePct)],['Err%',m=>fmtPct(m.errPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
   ricezione:[['#',m=>m.c['#']],['+',m=>m.c['+']],['Fb',m=>m.c['/']],['Err',m=>m.c['=']],['Prf%',m=>fmtPct(m.prfPct)],['Pos%',m=>fmtPct(m.posPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
-  attacco:  [['Pt',m=>m.c['#']],['Err',m=>m.c['=']],['Mur',m=>m.c['/']],['T.muro',m=>m.c['v']],['Kill%',m=>fmtPct(m.killPct)],['Err%',m=>fmtPct(m.errPct)],['Mur%',m=>fmtPct(m.blkPct)],['Eff%',m=>fmtPct(m.eff,true),true]],
+  attacco:  [['Pt',m=>m.c['#']],['Err',m=>m.c['=']],['Mur',m=>m.c['/']],['T.muro',m=>m.closingOnly?'–':m.c['v']],['Kill%',m=>fmtPct(m.killPct)],['Err%',m=>fmtPct(m.errPct)],['Mur%',m=>fmtPct(m.blkPct)],['Saldo',m=>(m.saldo>0?'+':'')+m.saldo],['Eff%',m=>fmtPct(m.eff,true),true]],
   difesa:   [['#',m=>m.c['#']],['+',m=>m.c['+']],['−',m=>m.c['-']],['Err',m=>m.c['=']],['Err/set',m=>m.errPerSet??'–'],['Pos%',m=>fmtPct(m.posPct),true]],
   muro:     [['Pt',m=>m.c['#']],['T.fav',m=>m.c['+']],['T.sfav',m=>m.c['-']],['Err',m=>m.c['=']],['Fav%',m=>fmtPct(m.favPct)],['Pt/set',m=>m.perSet??'–',true]],
   alzata:   [['#',m=>m.c['#']],['+',m=>m.c['+']],['Err',m=>m.c['=']],['Prf%',m=>fmtPct(m.prfPct)],['Pos%',m=>fmtPct(m.posPct),true]],
 };
 // ---- side-out / break-point e bilancio punti (escluse le correzioni manuali) ----
-const isCorr=a=>a.generic&&a.gtype==='correction';
+const isCorr=isMeta; // correzioni e cambi non sono scambi
 // K1 = scambi in cui riceviamo (side-out), K2 = scambi in cui battiamo (break-point)
 function phaseStats(acts){
   const r=acts.filter(a=>!isCorr(a)&&actionPoint(a));
@@ -1988,7 +2060,10 @@ function pointBalance(acts){
   const lost=[['Errori in battuta',c('opp',t('battuta'))],['Errori in ricezione',c('opp',t('ricezione'))],
     ['Attacchi sbagliati',c('opp',t('attacco',['=']))],['Attacchi murati',c('opp',t('attacco',['/']))],
     ['Altri errori tecnici',c('opp',a=>!a.generic&&!['battuta','ricezione','attacco'].includes(a.fund))],
-    ['Errori/falli generici',c('opp',a=>a.generic&&a.side==='us')],['Punti avversari',c('opp',a=>a.generic&&a.side==='opp')]];
+    ['Errori/falli generici',c('opp',a=>a.generic&&a.side==='us')],
+    ['Attacco avversario',c('opp',a=>a.generic&&a.side==='opp'&&a.gsub==='attacco')],
+    ['Muro avversario',c('opp',a=>a.generic&&a.side==='opp'&&a.gsub==='muro')],
+    ['Altri punti avversari',c('opp',a=>a.generic&&a.side==='opp'&&!['attacco','muro'].includes(a.gsub))]];
   const sum=l=>l.reduce((x,y)=>x+y[1],0);
   return {won,lost,W:sum(won),L:sum(lost)};
 }
@@ -2040,7 +2115,7 @@ async function computeStats(){
   // filtro giocatore (vale per KPI, tabella fondamentali, tabella giocatori, alzate)
   const skillP=statPlayer==='all'?allSkill:allSkill.filter(a=>a.playerId===statPlayer);
   let skill=statFund==='all'?skillP:skillP.filter(a=>a.fund===statFund);
-  const generics=acts.filter(a=>a.generic&&a.gtype!=='correction');
+  const generics=acts.filter(a=>a.generic&&!isMeta(a));
   const corrections=acts.filter(a=>a.generic&&a.gtype==='correction');
   const byFund=k=>skillP.filter(a=>a.fund===k);
   const FM={};for(const k of FUND_KEYS)FM[k]=fundMetrics(k,byFund(k),nSets);
@@ -2061,8 +2136,13 @@ async function computeStats(){
     k+=kpi(fmtPct(b.eff,true),'Eff. battuta',effColor(b.eff));
     k+=kpi(fmtPct(r.posPct),'Ricezione pos.','var(--good)');
     k+=kpi(fmtPct(r.eff,true),'Eff. ricezione',effColor(r.eff));
-    k+=kpi(fmtPct(at.killPct),'Kill% attacco','var(--good)');
-    k+=kpi(fmtPct(at.eff,true),'Eff. attacco',effColor(at.eff));
+    if(at.closingOnly){
+      k+=kpi(at.c['#'],'Attacchi punto','var(--good)');
+      k+=kpi((at.saldo>0?'+':'')+at.saldo,'Saldo attacco (pt − err − mur)',effColor(at.saldo));
+    }else{
+      k+=kpi(fmtPct(at.killPct),'Kill% attacco','var(--good)');
+      k+=kpi(fmtPct(at.eff,true),'Eff. attacco',effColor(at.eff));
+    }
     k+=kpi(mu.perSet??'–','Muri punto / set','var(--acc2)');
     k+=kpi(fmtPct(FM.difesa.posPct),'Difesa pos.','var(--good)');
     k+=kpi(nSets,'Set giocati');
@@ -2274,13 +2354,15 @@ async function buildReportHtml(matchId){
   const fundTable=FUND_KEYS.filter(k=>FM[k].n).map(k=>{
     const m=FM[k],cols=FUND_COLS[k];
     return `<tr><td class="l"><b>${FUNDAMENTALS[k].label}</b></td><td>${m.n}</td><td>${m.c['#']}</td><td>${m.c['+']}</td><td>${m.c['-']}</td><td>${m.c['/']}</td><td>${m.c['=']}</td>
-      <td class="l">${cols.filter(c=>!['Ace','Err','Pt','#','+','−','Fb','T.fav','T.sfav','Mur'].includes(c[0])).map(c=>`${c[0]} <b>${c[1](m)}</b>`).join(' · ')}</td></tr>`;
+      <td class="l">${cols.filter(c=>!['Ace','Err','Pt','#','+','−','Fb','T.fav','T.sfav','Mur'].includes(c[0])&&String(c[1](m))!=='–').map(c=>`${c[0]} <b>${c[1](m)}</b>`).join(' · ')}${k==='attacco'&&m.closingOnly?' <span style="color:#888">(solo attacchi conclusivi)</span>':''}</td></tr>`;
   }).join('');
   // tabellino giocatori
+  const ATK_CLOSING=fundMetrics('attacco',skill.filter(a=>a.fund==='attacco'),nSets).closingOnly;
   const GROUPS=[
     {k:'battuta',h:['Tot','Ace','Err','Eff%'],f:m=>[m.n,m.c['#'],m.c['='],fmtPct(m.eff,true)]},
     {k:'ricezione',h:['Tot','Err','Pos%','Prf%','Eff%'],f:m=>[m.n,m.c['='],fmtPct(m.posPct),fmtPct(m.prfPct),fmtPct(m.eff,true)]},
-    {k:'attacco',h:['Tot','Pt','Err','Mur','Kill%','Eff%'],f:m=>[m.n,m.c['#'],m.c['='],m.c['/'],fmtPct(m.killPct),fmtPct(m.eff,true)]},
+    ATK_CLOSING?{k:'attacco',lbl:'Attacco (solo conclusivi)',h:['Pt','Err','Mur','Saldo'],f:m=>[m.c['#'],m.c['='],m.c['/'],(m.saldo>0?'+':'')+m.saldo]}
+      :{k:'attacco',h:['Tot','Pt','Err','Mur','Kill%','Eff%'],f:m=>[m.n,m.c['#'],m.c['='],m.c['/'],fmtPct(m.killPct),fmtPct(m.eff,true)]},
     {k:'difesa',h:['Tot','Pos%'],f:m=>[m.n,fmtPct(m.posPct)]},
     {k:'muro',h:['Pt'],f:m=>[m.c['#']]},
     {k:'alzata',h:['Tot','Pos%'],f:m=>[m.n,fmtPct(m.posPct)]},
@@ -2305,12 +2387,13 @@ async function buildReportHtml(matchId){
       const pts=pa.filter(a=>actionPoint(a)==='us').length,err=pa.filter(a=>actionPoint(a)==='opp').length;
       const rc=by('ricezione'),at=by('attacco');
       const rcP=rc.length?fmtPct(fundMetrics('ricezione',rc,1).posPct):'';
-      const atK=at.length?`${at.filter(a=>a.outcome==='#').length}/${at.length}`:'';
+      const atK=at.length?(ATK_CLOSING?String(at.filter(a=>a.outcome==='#').length):`${at.filter(a=>a.outcome==='#').length}/${at.length}`):'';
       return `<tr><td class="n">${p.number}</td><td class="l">${e(p.name)}</td><td class="pts">${pts||''}</td><td>${err||''}</td><td>${by('battuta').length||''}</td><td>${rc.length?rc.length+' · '+rcP:''}</td><td>${atK}</td></tr>`;
     }).join('');
     if(!body)return '';
+    const subsTxt=r.acts.filter(a=>a.generic&&a.gtype==='sub').sort((x,y)=>x.ts-y.ts).map(a=>{const pi=S.players.find(p=>p.id===a.subIn),po=S.players.find(p=>p.id===a.subOut);return `#${pi?pi.number:'?'} per #${po?po.number:'?'}`;}).join(' · ');
     return `<div class="setbox"><h3>${single?'':`vs ${e(r.match.opponent)} · `}Set ${r.set} <span>${r.us}-${r.them}</span> <small>SO ${fmtSB(r.ph.so)} · BP ${fmtSB(r.ph.bp)}</small></h3>
-      <table><thead><tr><th>N°</th><th>Giocatore</th><th>Pt</th><th>Err</th><th>Batt.</th><th>Ric. · pos%</th><th>Att. pt/tot</th></tr></thead><tbody>${body}</tbody></table></div>`;
+      <table><thead><tr><th>N°</th><th>Giocatore</th><th>Pt</th><th>Err</th><th>Batt.</th><th>Ric. · pos%</th><th>${ATK_CLOSING?'Att. pt':'Att. pt/tot'}</th></tr></thead><tbody>${body}</tbody></table>${subsTxt?`<div class="subs">🔄 ${subsTxt}</div>`:''}</div>`;
   }).join('');
   // rotazioni
   const rot=[];for(let z=1;z<=6;z++){const ra=acts.filter(a=>a.rotation===z);if(!ra.length)continue;
@@ -2333,7 +2416,7 @@ table{width:100%;border-collapse:collapse;margin-top:4px}th,td{border:1px solid 
 td.l{text-align:left}td.n{font-weight:800;width:30px}td.pts{font-weight:800;background:#fff4ec}.sep{border-left:2px solid #555}tr.tot td{font-weight:800;background:#f7f7f7;border-top:2px solid #555}
 .grp th{background:#222;color:#fff}.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
 .setbox{break-inside:avoid;page-break-inside:avoid}.setbox h3{font-size:12px;margin:6px 0 4px}.setbox h3 span{color:#ff6a2b;margin-left:6px}tr.pfirst td{border-top:2px solid #999}.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}.legend{color:#555;font-size:10.5px;line-height:1.5}
-.kp{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px;font-size:13px}.kp b{font-size:16px;color:#ff6a2b}.kp small{color:#888}.setbox h3 small{color:#555;font-weight:500;margin-left:6px}
+.kp{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px;font-size:13px}.kp b{font-size:16px;color:#ff6a2b}.kp small{color:#888}.setbox h3 small{color:#555;font-weight:500;margin-left:6px}.subs{font-size:10.5px;color:#444;margin-top:3px}
 @media screen{.top{padding-right:170px}}
 .noprint{position:fixed;top:14px;right:14px;background:#ff6a2b;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer}
 @media print{.noprint{display:none}body{padding:0}}
@@ -2341,7 +2424,7 @@ td.l{text-align:left}td.n{font-weight:800;width:30px}td.pts{font-weight:800;back
 <button class="noprint" onclick="window.print()">🖨 Stampa / PDF</button>
 <div class="top"><div>${head}</div><div class="brand">VBSCOUT<small>Referto tecnico · ${new Date().toLocaleDateString('it-IT')}</small></div></div>
 <h2>Tabellino giocatori</h2>
-${pRows?`<table><thead><tr class="grp"><th colspan="3"></th>${GROUPS.map(g=>`<th colspan="${g.h.length}" class="sep">${FUNDAMENTALS[g.k].label}</th>`).join('')}</tr>
+${pRows?`<table><thead><tr class="grp"><th colspan="3"></th>${GROUPS.map(g=>`<th colspan="${g.h.length}" class="sep">${g.lbl||FUNDAMENTALS[g.k].label}</th>`).join('')}</tr>
 <tr><th>N°</th><th>Giocatore</th><th>Pt</th>${GROUPS.map(g=>g.h.map((h,i)=>`<th${i===0?' class="sep"':''}>${h}</th>`).join('')).join('')}</tr></thead>
 <tbody>${pRows}${totRow}</tbody></table>`:'<p>Nessuna azione tecnica registrata.</p>'}
 ${balHtml}
@@ -2354,7 +2437,7 @@ ${setDetail?`<h2>Dettaglio giocatori per set</h2><div class="setgrid">${setDetai
 <h2>Legenda</h2><div class="legend">
 <b>Side-out</b> = % di scambi vinti quando riceviamo · <b>Break-point</b> = % di scambi vinti quando battiamo (numeri piccoli = vinti/giocati) ·
 <b>Battuta</b>: Eff% = (ace − errori) / tot · <b>Ricezione</b>: Pos% = (# + +) / tot, Prf% = # / tot, Eff% = (2·# + 1·+ − 1·/ − 2·=) / (2·tot) ·
-<b>Attacco</b>: Kill% = punti / tot, Eff% = (punti − errori − murati) / tot, T.muro = tocchi di muro rigiocati (v) · <b>Difesa</b>: Pos% = (# + +) / tot · <b>Muro</b>: punti (#), T.fav / T.sfav = tocchi favorevoli / sfavorevoli · <b>Alzata</b>: Pos% = (# + +) / tot ·
+<b>Attacco</b>: ${ATK_CLOSING?'scout dal vivo: registrati solo gli attacchi che chiudono lo scambio, Saldo = punti − errori − murati;':''} Kill% = punti / tot, Eff% = (punti − errori − murati) / tot, T.muro = tocchi di muro rigiocati (v) · <b>Difesa</b>: Pos% = (# + +) / tot · <b>Muro</b>: punti (#), T.fav / T.sfav = tocchi favorevoli / sfavorevoli · <b>Alzata</b>: Pos% = (# + +) / tot ·
 Kill% e Ric. pos% per set = calcolati sulle sole azioni del set${HAS_DIFESA?' · Difese+ = difese con esito # o +':''} ·
 Pt giocatore = ace + attacchi punto + muri punto · Err. nostri = errori (=) e murati (/) nelle azioni tecniche + errori/falli generici.
 </div></body></html>`;
@@ -2509,7 +2592,7 @@ $('#exportCsv').onclick=async()=>{
     const vt=a.videoTime==null?'':String(a.videoTime).replace('.',',');
     if(a.generic){
       const lbl=genericLabel(a).toLowerCase();
-      lines.push(csvRow([m?.date,m?.opponent,a.setNum,rot,'','',a.gtype==='correction'?'correzione':'generico',lbl,'','','',a.mode,vt]));
+      lines.push(csvRow([m?.date,m?.opponent,a.setNum,rot,'','',a.gtype==='correction'?'correzione':a.gtype==='sub'?'cambio':'generico',lbl,'','','',a.mode,vt]));
     }else{
       lines.push(csvRow([m?.date,m?.opponent,a.setNum,rot,p?.name,p?.number,a.fund,a.outcome,a.setCall,a.fromZone,a.toZone,a.mode,vt]));
     }
