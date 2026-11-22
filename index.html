@@ -287,6 +287,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
   <div class="sec-title">Archivio partite</div>
   <div id="matchArchive"></div>
+  <div id="licBox"></div>
 </section>
 
 <!-- ============ ROSTER VIEW ============ -->
@@ -755,7 +756,65 @@ async function loadAll(){
 }
 async function saveState(){await put('meta',{k:'state',currentTeam:S.currentTeam?.id,currentMatch:S.currentMatch?.id});}
 
-$('#addTeamBtn').onclick=()=>teamSheet();
+// =========================================================
+//  DEMO / SBLOCCO (senza login)
+//  Demo: 1 squadra e 2 partite (le copie "per scout da video" non contano).
+//  Sblocco: codice per dispositivo. Nel codice ci sono solo le impronte (SHA-256),
+//  non i codici in chiaro. Per revocare un dispositivo togli la sua impronta da UNLOCK_HASHES.
+// =========================================================
+const DEMO_MAX_TEAMS=1, DEMO_MAX_MATCHES=2;
+const CONTACT_URL='https://instagram.com/joel86volley';
+const UNLOCK_HASHES=[
+  '87c63ba23eb9caa1b18d281e0d8d1f92da7f2bf34505fbb3372f99dfb583396a', // codice 1
+  '690444d4e5e3b64034c1ed77116f2cf7c11b470162052a85dd5704fb8f547935', // codice 2
+  'b2df836067879518d25f6f149985fd599aa4e09ebd04c191e26e7026404ba326', // codice 3
+  'dff59761f47dcc66190270dbf302a9768e7dd6c5e3e6ffb8a007487a5aeb15d1', // codice 4
+  '347a192ff3ec20de4a8874451f7df80d745569a547c3dcaa6ab40e8894451e71', // codice 5
+];
+const LIC={unlocked:false,code:null,made:0};
+const normCode=c=>String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+async function hashCode(c){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('vbscout:'+normCode(c)));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+const realMatches=()=>S.matches.filter(m=>!m.sourceMatch).length;
+async function loadLic(){
+  const r=await getOne('meta','lic')||{};
+  LIC.code=r.code||null;LIC.made=Math.max(r.made||0,realMatches());
+  LIC.unlocked=false;
+  if(LIC.code){try{LIC.unlocked=UNLOCK_HASHES.includes(await hashCode(LIC.code));}catch(_){}}
+  await saveLic();
+}
+async function saveLic(){await put('meta',{k:'lic',code:LIC.code,made:LIC.made});}
+const canNewTeam=()=>LIC.unlocked||S.teams.length<DEMO_MAX_TEAMS;
+const canNewMatch=()=>LIC.unlocked||LIC.made<DEMO_MAX_MATCHES;
+function licBadgeHtml(){
+  if(LIC.unlocked)return `<div style="text-align:center;color:var(--mut2);font-size:12px;margin:18px 0 4px">✓ Versione completa attiva su questo dispositivo</div>`;
+  const left=Math.max(0,DEMO_MAX_MATCHES-LIC.made);
+  return `<div class="card" style="margin-top:18px;text-align:center">
+    <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700">Versione demo</div>
+    <div style="margin:6px 0 12px;font-size:14px">1 squadra · partite rimaste: <b>${left}</b> su ${DEMO_MAX_MATCHES}</div>
+    <button class="btn gho full" id="unlockBtn">🔓 Sblocca versione completa</button></div>`;
+}
+function limitSheet(why){
+  modal(`<h2 style="margin:0 0 8px;font-size:22px">Versione demo</h2>
+    <p style="color:var(--mut);margin:0 0 14px;font-size:14px;line-height:1.4">${esc(why)} Per la versione completa contattami, oppure inserisci il tuo codice di sblocco.</p>
+    <label class="fld">Codice di sblocco</label>
+    <input class="inp" id="unlockCode" placeholder="VBS-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
+    <button class="btn pri full" id="unlockOk" style="margin-top:12px">Sblocca</button>
+    <a class="btn gho full" href="${CONTACT_URL}" target="_blank" rel="noopener" style="margin-top:8px;text-align:center;text-decoration:none">💬 Contattami per la versione completa</a>
+    <button class="btn gho full" id="unlockNo" style="margin-top:8px">Chiudi</button>`);
+  $('#unlockNo').onclick=()=>closeModal();
+  $('#unlockOk').onclick=async()=>{
+    const c=$('#unlockCode').value;if(!normCode(c))return toast('Inserisci il codice');
+    let ok=false;try{ok=UNLOCK_HASHES.includes(await hashCode(c));}catch(_){return toast('Sblocco non disponibile: apri l\'app dal link https');}
+    if(!ok)return toast('Codice non valido');
+    LIC.code=normCode(c);LIC.unlocked=true;await saveLic();
+    closeModal();renderMatchView();toast('✓ Versione completa attivata');
+  };
+}
+
+$('#addTeamBtn').onclick=()=>{if(!canNewTeam())return limitSheet('Nella demo puoi creare una sola squadra.');teamSheet();};
 function teamSheet(team){
   const ed=!!team;
   modal(`<h2 style="margin:0 0 14px;font-size:22px">${ed?'Modifica':'Nuova'} squadra</h2>
@@ -838,11 +897,14 @@ function renderMatchView(){
   }).join(''):'')+(S.currentTeam?'<button class="btn gho full" id="newMatch2" style="margin-top:6px">+ Nuova partita</button>':'');
   $$('[data-setcur]').forEach(b=>b.onclick=async()=>{S.currentMatch=S.matches.find(m=>m.id===b.dataset.setcur);await saveState();renderMatchView();renderCtx();toast('Partita attivata');});
   const nm2=$('#newMatch2');if(nm2)nm2.onclick=()=>matchSheet();
+  $('#licBox').innerHTML=licBadgeHtml();
+  const ub=$('#unlockBtn');if(ub)ub.onclick=()=>limitSheet('Stai usando la versione demo.');
 }
 
 function matchSheet(m){
   const ed=!!m;
   if(!S.currentTeam)return toast('Crea prima una squadra');
+  if(!ed&&!canNewMatch())return limitSheet('Nella demo puoi creare al massimo '+DEMO_MAX_MATCHES+' partite.');
   modal(`<h2 style="margin:0 0 14px;font-size:22px">${ed?'Modifica':'Nuova'} partita</h2>
     <label class="fld">Avversario</label><input class="inp" id="mOpp" value="${esc(m?.opponent||'')}" placeholder="Nome squadra avversaria">
     <div class="row" style="margin-top:12px">
@@ -860,7 +922,7 @@ function matchSheet(m){
     const obj=m||{id:uid(),teamId:S.currentTeam.id,createdAt:Date.now(),sets:[{us:0,them:0}],curSet:0};
     obj.opponent=opp;obj.date=$('#mDate').value;obj.homeAway=ha;
     await put('matches',obj);
-    if(!m){S.matches.push(obj);S.currentMatch=obj;}else{const i=S.matches.findIndex(x=>x.id===obj.id);S.matches[i]=obj;}
+    if(!m){S.matches.push(obj);S.currentMatch=obj;LIC.made++;await saveLic();}else{const i=S.matches.findIndex(x=>x.id===obj.id);S.matches[i]=obj;}
     await saveState();closeModal();renderMatchView();renderCtx();toast('Partita salvata');
   };
   // nuova partita vuota con le stesse formazioni per set: lo scout da video non si somma a quello dal vivo
@@ -2683,12 +2745,17 @@ $('#importFile').onchange=e=>{
   rd.onload=async()=>{
     try{
       const d=JSON.parse(rd.result);if(d.app!=='vbscout')throw 0;
+      if(!LIC.unlocked){
+        const ids=new Set([...S.teams.map(t=>t.id),...(d.teams||[]).map(t=>t.id)]);
+        const mids=new Set([...S.matches.filter(m=>!m.sourceMatch).map(m=>m.id),...(d.matches||[]).filter(m=>!m.sourceMatch).map(m=>m.id)]);
+        if(ids.size>DEMO_MAX_TEAMS||mids.size>DEMO_MAX_MATCHES){e.target.value='';return limitSheet('Questo backup supera i limiti della demo (1 squadra, 2 partite).');}
+      }
       if(!await confirmSheet('Ripristinare il backup?','I dati del file verranno uniti a quelli attuali (i record con lo stesso ID vengono sovrascritti).','Ripristina',false))return;
       for(const t of d.teams||[])await put('teams',t);
       for(const p of d.players||[]){p.number=parseInt(p.number)||0;await put('players',p);} // numero sempre numerico (niente HTML da file esterni)
       for(const m of d.matches||[])await put('matches',m);
       for(const a of d.actions||[])await put('actions',a);
-      await loadAll();renderMatchView();renderCtx();toast('Backup ripristinato');
+      await loadAll();await loadLic();renderMatchView();renderCtx();toast('Backup ripristinato');
     }catch(_){toast('File non valido');}
   };
   rd.readAsText(f);
@@ -2737,6 +2804,7 @@ if('serviceWorker' in navigator){
   try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))await navigator.storage.persist();}catch(_){}
   await openDB();
   await loadAll();
+  await loadLic();
   renderCtx();
   renderMatchView();
   fixNavPad();
