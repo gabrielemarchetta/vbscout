@@ -920,6 +920,8 @@ function matchSheet(m){
   $('#mSave').onclick=async()=>{
     const opp=$('#mOpp').value.trim();if(!opp)return toast('Inserisci l\'avversario');
     const obj=m||{id:uid(),teamId:S.currentTeam.id,createdAt:Date.now(),sets:[{us:0,them:0}],curSet:0};
+    // demo: una copia "per scout da video" non si può rinominare (altrimenti diventerebbe una partita in più)
+    if(!LIC.unlocked&&m&&m.sourceMatch&&opp!==m.opponent)return toast('Nella demo non puoi rinominare una copia video');
     obj.opponent=opp;obj.date=$('#mDate').value;obj.homeAway=ha;
     await put('matches',obj);
     if(!m){S.matches.push(obj);S.currentMatch=obj;LIC.made++;await saveLic();}else{const i=S.matches.findIndex(x=>x.id===obj.id);S.matches[i]=obj;}
@@ -927,6 +929,8 @@ function matchSheet(m){
   };
   // nuova partita vuota con le stesse formazioni per set: lo scout da video non si somma a quello dal vivo
   if(ed)$('#mDup').onclick=async()=>{
+    // demo: una sola copia video per partita, e niente copie di copie
+    if(!LIC.unlocked&&(m.sourceMatch||S.matches.some(x=>x.sourceMatch===m.id)))return limitSheet('Nella demo puoi creare una sola copia per scout da video per ogni partita.');
     const tpl=(m.sets||[]).map(s=>{const l=s.lu;if(!l)return null;const c=JSON.parse(JSON.stringify(l));
       if(c.startLineup){c.lineup=c.startLineup;c.setterId=c.startSetterId||c.setterId;delete c.startLineup;delete c.startSetterId;}c.rotStep=0;c.libIn=null;c.firstServe=s.firstServe||null;
       const sz=+Object.keys(c.lineup).find(z=>c.lineup[z]===c.setterId);if(sz)c.setterZone=sz;return c;});
