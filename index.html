@@ -2440,7 +2440,7 @@ async function renderLog(){
     const pz=a.playerZone?` <span style="color:var(--teal);font-size:10px;font-weight:700" title="${t('log.zoneTitle')}">Z${a.playerZone}·${esc(shortName(p))}</span>`:'';
     const stp=subtypeOf(a),stTxt=stp?` <span style="color:var(--mut);font-size:10px">(${stp.lbl})</span>`:'';
     return `<div class="logrow"><span class="dot" style="background:${col}"></span>
-      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${a.outcome}</span>${stTxt}${sc}${rot}${pz}${zn}
+      <b>#${p?p.number:'?'}</b> ${fund?fund.label:''} <span style="color:${col};font-weight:800">${esc(a.outcome)}</span>${stTxt}${sc}${rot}${pz}${zn}
       <span class="meta">${tm}${delBtn}</span></div>`;
   };
   $('#logList').innerHTML=acts.slice(0,14).map(rowHtml).join('')||`<div class="empty" style="padding:20px">${t('log.empty')}</div>`;
@@ -2573,10 +2573,10 @@ const ACT_CACHE=new Map();           // id → azione, alimentata da log/statist
 function cacheActions(list){for(const a of list)ACT_CACHE.set(a.id,a);}
 function vlinkHtml(a){return `<button class="vlink" data-seek="${a.id}" aria-label="${t('vid.seekAria',{t:fmtTime(a.videoTime)})}">▶ ${fmtTime(a.videoTime)}</button>`;}
 function actionLabel(a){
-  if(a.generic)return genericLabel(a);
+  if(a.generic)return esc(genericLabel(a)); // contiene nomi giocatori: va ripulito (finisce in innerHTML)
   const p=S.players.find(x=>x.id===a.playerId),f=FUNDAMENTALS[a.fund];
   const stp=subtypeOf(a);
-  return `#${p?p.number:'?'} ${p?esc(p.name):''} · ${f?f.label:''} ${a.outcome||''}${stp?' ('+stp.lbl+')':''}`;
+  return `#${p?p.number:'?'} ${p?esc(p.name):''} · ${f?f.label:''} ${esc(a.outcome)}${stp?' ('+stp.lbl+')':''}`;
 }
 const videoReady={
   file:()=>{const v=$('#vid');return !!(v&&v.currentSrc&&!isNaN(v.duration));},
@@ -3305,7 +3305,8 @@ $('#exportCsv').onclick=async()=>{
   // intestazioni tradotte; i valori restano le chiavi salvate (battuta, '#', NOI Z3...) così i fogli restano confrontabili
   const head=t('csv.head').split('|');
   // B12: separatore ';' (Excel IT), ogni campo tra virgolette con "" per le virgolette interne
-  const csvRow=cols=>cols.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';');
+  const csvCell=v=>{let x=String(v??'');if(x.length>1&&/^[=+\-@\t\r]/.test(x)&&!/^-?\d+([.,]\d+)?$/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"';}; // anti "formula injection" in Excel
+  const csvRow=cols=>cols.map(csvCell).join(';');
   const lines=[csvRow(head)];
   acts.sort((a,b)=>a.ts-b.ts);
   for(const a of acts){
@@ -3398,6 +3399,26 @@ $('#pdfBtn').onclick=async()=>{
   }catch(err){console.error(err);toast(t('pdf.error'));}
   finally{btn.disabled=false;btn.textContent=old;}
 };
+// Azione da backup esterno: i campi a valori fissi devono essere validi, altrimenti vengono azzerati
+// (oppure l'azione viene scartata). Così un file modificato non può inserire HTML/script nell'app.
+const ZONE_RE=/^(NOI|AVV) Z[1-6]$/;
+function cleanImportedAction(a){
+  if(!a||typeof a!=='object'||!a.id||!a.matchId)return null;
+  const num=v=>v==null||v===''?null:(isFinite(+v)?+v:null);
+  a.setNum=num(a.setNum)||1;a.rotation=num(a.rotation);a.playerZone=num(a.playerZone);a.videoTime=num(a.videoTime);a.ts=num(a.ts)||0;
+  if(a.phase!=null&&a.phase!=='K1'&&a.phase!=='K2')a.phase=null;
+  if(a.generic){
+    if(!['us','opp'].includes(a.side)||!['point','error','correction','sub'].includes(a.gtype))return null;
+    if(a.gsub!=null&&!['attacco','muro','altro'].includes(a.gsub))a.gsub=null;
+    a.delta=num(a.delta);a.subZone=num(a.subZone);
+    return a;
+  }
+  const f=FUNDAMENTALS[a.fund];if(!f||!f.outcomes.some(o=>o.k===a.outcome))return null;
+  for(const k of ['fromZone','toZone'])if(a[k]!=null&&!ZONE_RE.test(a[k]))a[k]=null;
+  if(a.setCall!=null&&!SET_CALLS.includes(a.setCall))a.setCall=null;
+  for(const fk in SUBTYPES){const st=SUBTYPES[fk];if(a[st.field]!=null&&!st.list.some(x=>x.k===a[st.field]))a[st.field]=null;}
+  return a;
+}
 $('#importBtn').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=e=>{
   const f=e.target.files[0];if(!f)return;
@@ -3411,10 +3432,10 @@ $('#importFile').onchange=e=>{
         if(ids.size>DEMO_MAX_TEAMS||mids.size>DEMO_MAX_MATCHES){e.target.value='';return limitSheet(t('lic.backupLimit'));}
       }
       if(!await confirmSheet(t('imp.q'),t('imp.msg'),t('imp.ok'),false))return;
-      for(const t of d.teams||[])await put('teams',t);
-      for(const p of d.players||[]){p.number=parseInt(p.number)||0;await put('players',p);} // numero sempre numerico (niente HTML da file esterni)
-      for(const m of d.matches||[])await put('matches',m);
-      for(const a of d.actions||[])await put('actions',a);
+      for(const t of d.teams||[])if(t&&t.id)await put('teams',t);
+      for(const p of d.players||[]){if(!p||!p.id)continue;p.number=parseInt(p.number)||0;await put('players',p);} // numero sempre numerico (niente HTML da file esterni)
+      for(const m of d.matches||[])if(m&&m.id)await put('matches',m);
+      for(const a of d.actions||[]){const c=cleanImportedAction(a);if(c)await put('actions',c);}
       await loadAll();await loadLic();renderMatchView();renderCtx();toast(t('imp.done'));
     }catch(_){toast(t('imp.invalid'));}
   };
