@@ -832,6 +832,26 @@ const I18N={
 'sb.oppMinus':["Togli un punto all'avversario","Remove a point from the opponent","Dem Gegner einen Punkt abziehen","Quitar un punto al rival","Retirer un point à l'adversaire"],
 'sb.oppPlus':["Aggiungi un punto all'avversario","Add a point to the opponent","Dem Gegner einen Punkt geben","Sumar un punto al rival","Ajouter un point à l'adversaire"],
 'set.n':["Set {n}","Set {n}","Satz {n}","Set {n}","Set {n}"],
+'fmt.label':["Formato","Format","Format","Formato","Format"],
+'fmt.bo5':["Meglio dei 5","Best of 5","Best of 5","Mejor de 5","Meilleur des 5"],
+'fmt.bo3':["Meglio dei 3","Best of 3","Best of 3","Mejor de 3","Meilleur des 3"],
+'fmt.fixed':["Set fissi","Fixed sets","Feste Sätze","Sets fijos","Sets fixes"],
+'fmt.nSets':["Numero di set","Number of sets","Anzahl Sätze","Número de sets","Nombre de sets"],
+'fmt.hintWin':["Finisce quando una squadra vince {n} set · ultimo set a 15","Ends when a team wins {n} sets · last set to 15","Endet, wenn ein Team {n} Sätze gewinnt · letzter Satz bis 15","Termina cuando un equipo gana {n} sets · último set a 15","Se termine quand une équipe gagne {n} sets · dernier set à 15"],
+'fmt.hintFixed':["Si giocano sempre tutti i set indicati · ogni set a 25","All the sets are always played · every set to 25","Alle Sätze werden immer gespielt · jeder Satz bis 25","Se juegan siempre todos los sets · cada set a 25","Tous les sets sont toujours joués · chaque set à 25"],
+'end.setWon':["Set vinto {sc}","Set won {sc}","Satz gewonnen {sc}","Set ganado {sc}","Set gagné {sc}"],
+'end.setLost':["Set perso {sc}","Set lost {sc}","Satz verloren {sc}","Set perdido {sc}","Set perdu {sc}"],
+'end.setMsg':["Chiudere il set {n}? Se un punto è sbagliato tocca Continua e correggi.","Close set {n}? If a point is wrong, tap Continue and fix it.","Satz {n} beenden? Wenn ein Punkt falsch ist, tippe auf Weiter und korrigiere.","¿Cerrar el set {n}? Si un punto está mal, toca Continuar y corrígelo.","Clôturer le set {n} ? Si un point est faux, touche Continuer et corrige."],
+'end.closeSet':["Chiudi set","Close set","Satz beenden","Cerrar set","Clôturer le set"],
+'end.continue':["Continua","Continue","Weiter","Continuar","Continuer"],
+'end.matchT':["Partita finita {r}","Match over {r}","Spiel beendet {r}","Partido terminado {r}","Match terminé {r}"],
+'end.matchMsg':["Prepara il report da condividere e fai un backup: i dati restano solo su questo dispositivo.","Create the report to share and make a backup: the data stays only on this device.","Erstelle den Bericht zum Teilen und mache ein Backup: Die Daten bleiben nur auf diesem Gerät.","Prepara el informe para compartir y haz una copia de seguridad: los datos quedan solo en este dispositivo.","Prépare le rapport à partager et fais une sauvegarde : les données restent uniquement sur cet appareil."],
+'end.backup':["⬇ Backup dati","⬇ Data backup","⬇ Daten-Backup","⬇ Copia de datos","⬇ Sauvegarde"],
+'end.banner':["🏁 Partita conclusa {r}","🏁 Match finished {r}","🏁 Spiel beendet {r}","🏁 Partido terminado {r}","🏁 Match terminé {r}"],
+'end.reopen':["Riapri partita","Reopen match","Spiel wieder öffnen","Reabrir partido","Rouvrir le match"],
+'end.reopened':["Partita riaperta: puoi continuare o correggere","Match reopened: you can continue or correct","Spiel wieder geöffnet: weiterspielen oder korrigieren","Partido reabierto: puedes continuar o corregir","Match rouvert : tu peux continuer ou corriger"],
+'end.already':["La partita è conclusa: per un altro set tocca Riapri partita","The match is over: to add a set tap Reopen match","Das Spiel ist beendet: für einen weiteren Satz Spiel wieder öffnen","El partido ha terminado: para otro set toca Reabrir partido","Le match est terminé : pour un autre set, touche Rouvrir le match"],
+'end.tag':["Finita","Finished","Beendet","Terminado","Terminé"],
 'set.new':["Nuovo set {n}","New set {n}","Neuer Satz {n}","Nuevo set {n}","Nouveau set {n}"],
 'set.whoFirst':["Set {n} · chi batte per primo?","Set {n} · who serves first?","Satz {n} · wer schlägt zuerst auf?","Set {n} · ¿quién saca primero?","Set {n} · qui sert en premier ?"],
 'srv.who':["Chi batte ora?","Who serves now?","Wer schlägt jetzt auf?","¿Quién saca ahora?","Qui sert maintenant ?"],
@@ -1514,7 +1534,7 @@ function renderMatchView(){
     mc.innerHTML=`<div class="row" style="align-items:center">
         <div class="grow"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700">${m.homeAway==='home'?t('match.home'):t('match.away')} · ${esc(m.date)}</div>
         <div class="disp" style="font-size:24px;font-weight:800;margin-top:2px">${esc(S.currentTeam?.name||t('c.us'))} <span style="color:var(--mut)">vs</span> ${esc(m.opponent)}</div>
-        <div style="color:var(--mut);font-size:14px;margin-top:4px">${t('match.sets')}: ${sets}</div></div></div>
+        <div style="color:var(--mut);font-size:14px;margin-top:4px">${t('match.sets')}: ${sets}${m.finished?` · <b style="color:var(--acc2)">🏁 ${t('end.tag')} ${matchResultText(m)}</b>`:''}</div></div></div>
       <div class="row" style="margin-top:14px">
         <button class="btn pri grow" id="goScout">${t('match.goScout')}</button>
         <button class="btn gho" id="editMatch" aria-label="${t('match.edit')}">✎</button>
@@ -1549,7 +1569,8 @@ function renderMatchView(){
   const arc=S.matches.filter(m=>m.teamId===S.currentTeam?.id).sort((a,b)=>b.createdAt-a.createdAt);
   $('#matchArchive').innerHTML=(arc.length?arc.map(m=>{
     const sets=(m.sets||[]).map(s=>`${s.us}-${s.them}`).join(' ')||'—';
-    return `<div class="logrow" style="padding:12px"><div class="grow"><b>vs ${esc(m.opponent)}</b> <span style="color:var(--mut2);font-size:11px">${esc(m.date)}</span><div style="color:var(--mut);font-size:12px;margin-top:2px">${sets}</div></div>
+    const fin=m.finished?` <span style="color:var(--acc2);font-weight:800;font-size:11px">🏁 ${t('end.tag')} ${matchResultText(m)}</span>`:'';
+    return `<div class="logrow" style="padding:12px"><div class="grow"><b>vs ${esc(m.opponent)}</b> <span style="color:var(--mut2);font-size:11px">${esc(m.date)}</span>${fin}<div style="color:var(--mut);font-size:12px;margin-top:2px">${sets}</div></div>
       <button class="btn sm ${m.id===S.currentMatch?.id?'pri':'gho'}" data-setcur="${m.id}">${m.id===S.currentMatch?.id?t('match.active'):t('match.open')}</button></div>`;
   }).join(''):'')+(S.currentTeam?`<button class="btn gho full" id="newMatch2" style="margin-top:6px">${t('match.new')}</button>`:'');
   $$('[data-setcur]').forEach(b=>b.onclick=async()=>{S.currentMatch=S.matches.find(m=>m.id===b.dataset.setcur);await saveState();renderMatchView();renderCtx();toast(t('match.activated'));});
@@ -1569,10 +1590,21 @@ function matchSheet(m){
     </div>
     <label class="fld" style="margin-top:12px">${t('match.venue')}</label>
     <div class="seg" id="haSeg"><button data-ha="home" class="${!m||m.homeAway==='home'?'on':''}">${t('match.homeB')}</button><button data-ha="away" class="${m?.homeAway==='away'?'on':''}">${t('match.awayB')}</button></div>
+    <label class="fld" style="margin-top:12px">${t('fmt.label')}</label>
+    <div class="seg" id="fmtSeg"><button data-fmt="bo5">${t('fmt.bo5')}</button><button data-fmt="bo3">${t('fmt.bo3')}</button><button data-fmt="fixed">${t('fmt.fixed')}</button></div>
+    <div id="fmtFixedRow" class="row" style="margin-top:8px;align-items:center;gap:10px"><label class="fld" style="margin:0">${t('fmt.nSets')}</label>
+      <select class="inp" id="fmtN" style="width:90px">${[2,3,4,5].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+    <div id="fmtHint" style="font-size:12px;color:var(--mut2);margin-top:6px"></div>
     <button class="btn pri full" id="mSave" style="margin-top:16px">${ed?t('c.save'):t('match.createAct')}</button>
     ${ed?`<button class="btn gho full" id="mDup" style="margin-top:8px">${t('match.dup')}</button>`:''}
     ${ed?`<button class="btn danger gho full" id="mDel" style="margin-top:8px">${t('match.del')}</button>`:''}`);
   let ha=m?.homeAway||'home';
+  const f0=matchFormat(m);let fmt=f0.type;
+  $('#fmtN').value=String(f0.type==='fixed'?f0.n:3);
+  const syncFmt=()=>{$$('#fmtSeg button').forEach(x=>x.classList.toggle('on',x.dataset.fmt===fmt));
+    $('#fmtFixedRow').style.display=fmt==='fixed'?'flex':'none';
+    $('#fmtHint').textContent=fmt==='fixed'?t('fmt.hintFixed'):t('fmt.hintWin',{n:fmt==='bo3'?2:3});};
+  $$('#fmtSeg button').forEach(b=>b.onclick=()=>{fmt=b.dataset.fmt;syncFmt();});syncFmt();
   $$('#haSeg button').forEach(b=>b.onclick=()=>{ha=b.dataset.ha;$$('#haSeg button').forEach(x=>x.classList.toggle('on',x===b));});
   $('#mSave').onclick=async()=>{
     const opp=$('#mOpp').value.trim();if(!opp)return toast(t('match.enterOpp'));
@@ -1580,6 +1612,7 @@ function matchSheet(m){
     // demo: una copia "per scout da video" non si può rinominare (altrimenti diventerebbe una partita in più)
     if(!LIC.unlocked&&m&&m.sourceMatch&&opp!==m.opponent)return toast(t('lic.noRename'));
     obj.opponent=opp;obj.date=$('#mDate').value;obj.homeAway=ha;
+    obj.format=fmt==='fixed'?{type:'fixed',n:+$('#fmtN').value||3}:{type:fmt};
     await put('matches',obj);
     if(!m){S.matches.push(obj);S.currentMatch=obj;LIC.made++;await saveLic();}else{const i=S.matches.findIndex(x=>x.id===obj.id);S.matches[i]=obj;}
     await saveState();closeModal();renderMatchView();renderCtx();toast(t('match.saved'));
@@ -1591,7 +1624,7 @@ function matchSheet(m){
     const tpl=(m.sets||[]).map(s=>{const l=s.lu;if(!l)return null;const c=JSON.parse(JSON.stringify(l));
       if(c.startLineup){c.lineup=c.startLineup;c.setterId=c.startSetterId||c.setterId;delete c.startLineup;delete c.startSetterId;}c.rotStep=0;c.libIn=null;c.firstServe=s.firstServe||null;
       const sz=+Object.keys(c.lineup).find(z=>c.lineup[z]===c.setterId);if(sz)c.setterZone=sz;return c;});
-    const nm={id:uid(),teamId:m.teamId,createdAt:Date.now(),opponent:m.opponent+' (video)',date:m.date,homeAway:m.homeAway,
+    const nm={id:uid(),teamId:m.teamId,createdAt:Date.now(),opponent:m.opponent+' (video)',date:m.date,homeAway:m.homeAway,format:m.format,
       sets:[{us:0,them:0}],curSet:0,luTemplate:tpl,sourceMatch:m.id};
     await put('matches',nm);S.matches.push(nm);S.currentMatch=nm;
     await saveState();closeModal();renderMatchView();renderCtx();
@@ -1889,6 +1922,18 @@ function renderScore(){
   renderLiberoBar();
   if(courtCtx)drawCourt(); // la rotazione (e chi batte) si riflette subito sul campo
   fixStickyTop();
+  renderEndBanner();
+  setTimeout(checkSetEnd,250); // dopo toast/ridisegno: propone la chiusura del set se è vinto
+}
+// avviso "partita conclusa" nello scout
+function renderEndBanner(){
+  const m=S.currentMatch;let b=$('#endBanner');
+  if(!m||!m.finished){if(b)b.remove();return;}
+  if(!b){b=document.createElement('div');b.id='endBanner';b.className='card';b.style.cssText='margin:10px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    $('#scoreBar').after(b);}
+  b.innerHTML=`<b class="grow" style="font-size:15px">${t('end.banner',{r:matchResultText(m)})}</b>
+    <button class="btn sm pri" id="endBanPdf">📄 PDF</button><button class="btn sm gho" id="endBanReopen">${t('end.reopen')}</button>`;
+  $('#endBanPdf').onclick=()=>sharePdf(m.id);$('#endBanReopen').onclick=()=>reopenMatch();
 }
 $$('[data-pt]').forEach(b=>b.onclick=async()=>{
   const m=S.currentMatch,s=m.sets[m.curSet];const[w,sign]=[b.dataset.pt.slice(0,-1),b.dataset.pt.slice(-1)];
@@ -1920,12 +1965,70 @@ function genericLabel(a){
   const k=GENERIC_LABELS[a.side+'|'+a.gtype],base=k?t(k):t('gen.action');
   return a.gsub&&a.side==='opp'&&a.gtype==='point'?base+' · '+(['attacco','muro','altro'].includes(a.gsub)?t('gen.gsub.'+a.gsub):a.gsub):base;
 }
-$('#newSetBtn').onclick=async()=>{
-  const m=S.currentMatch;m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;S.subPending=null;
+// ---------- formato partita, fine set e fine partita ----------
+// m.format = {type:'bo5'|'bo3'|'fixed', n}. Partite vecchie senza formato = meglio dei 5.
+function matchFormat(m){const f=m&&m.format;if(f&&f.type==='fixed')return {type:'fixed',n:Math.min(7,Math.max(1,+f.n||3))};if(f&&f.type==='bo3')return {type:'bo3',n:3};return {type:'bo5',n:5};}
+const winsNeeded=f=>f.type==='bo3'?2:3;
+// punti per vincere il set i (0-based): tie-break a 15 solo nell'ultimo set possibile (non con i set fissi)
+function setTarget(m,i){const f=matchFormat(m);return f.type!=='fixed'&&i===f.n-1?15:25;}
+function setWinner(m,i){const s=m.sets&&m.sets[i];if(!s)return null;const T=setTarget(m,i);
+  if((s.us>=T||s.them>=T)&&Math.abs(s.us-s.them)>=2)return s.us>s.them?'us':'opp';return null;}
+// set vinti fino al set i compreso
+function setsWon(m,upTo){let us=0,opp=0;for(let i=0;i<=upTo&&i<(m.sets||[]).length;i++){const w=setWinner(m,i);if(w==='us')us++;else if(w==='opp')opp++;}return {us,opp};}
+// la partita è finita dopo aver chiuso il set i?
+function matchOverAfter(m,i){const f=matchFormat(m);
+  if(f.type==='fixed')return i+1>=f.n;
+  const w=setsWon(m,i),need=winsNeeded(f);return w.us>=need||w.opp>=need;}
+function matchResultText(m){const w=setsWon(m,(m.sets||[]).length-1);return `${w.us}-${w.opp}`;}
+// dopo ogni punto: se il set corrente è vinto, propone di chiuderlo (una volta per punteggio)
+let _setEndKey=null;
+function checkSetEnd(){
+  const m=S.currentMatch;if(!m||m.finished||$('#modalRoot').innerHTML)return;
+  const i=m.curSet,s=m.sets[i],w=setWinner(m,i);if(!w)return;
+  const key=m.id+'|'+i+'|'+s.us+'-'+s.them;if(_setEndKey===key)return;_setEndKey=key;
+  const sc=`${s.us}-${s.them}`;
+  modal(`<h2 style="margin:0 0 8px;font-size:22px">${w==='us'?'✅ '+t('end.setWon',{sc}):'❌ '+t('end.setLost',{sc})}</h2>
+    <p style="color:var(--mut);margin:0 0 16px;font-size:14px;line-height:1.4">${t('end.setMsg',{n:i+1})}</p>
+    <button class="btn pri full" id="endSetOk">${t('end.closeSet')}</button>
+    <button class="btn gho full" id="endSetNo" style="margin-top:8px">${t('end.continue')}</button>`);
+  $('#endSetNo').onclick=()=>closeModal();
+  $('#endSetOk').onclick=()=>{closeModal(true);closeSet();};
+}
+async function finishMatch(m){
+  m.finished=true;await put('matches',m);
+  renderScout();renderCtx();showMatchEnd(m);
+}
+function showMatchEnd(m){
+  const r=matchResultText(m),w=setsWon(m,m.sets.length-1),f=matchFormat(m);
+  const icon=f.type==='fixed'?'🏁':w.us>w.opp?'🏆':'🏁';
+  const sets=m.sets.filter(s=>s.us+s.them>0).map(s=>`${s.us}-${s.them}`).join(' · ');
+  modal(`<h2 style="margin:0 0 4px;font-size:24px">${icon} ${t('end.matchT',{r})}</h2>
+    <p style="color:var(--mut);margin:0 0 6px;font-size:14px">vs ${esc(m.opponent)} · ${esc(sets)}</p>
+    <p style="color:var(--mut);margin:0 0 16px;font-size:13px;line-height:1.4">${t('end.matchMsg')}</p>
+    <button class="btn pri full" id="endPdf">${t('st.pdf')}</button>
+    <button class="btn gho full" id="endBackup" style="margin-top:8px">${t('end.backup')}</button>
+    <button class="btn gho full" id="endClose" style="margin-top:8px">${t('c.close')}</button>`);
+  $('#endClose').onclick=()=>closeModal();
+  $('#endBackup').onclick=()=>{closeModal();$('#exportJson').click();};
+  $('#endPdf').onclick=()=>{closeModal();sharePdf(m.id);};
+}
+async function reopenMatch(){
+  const m=S.currentMatch;if(!m)return;m.finished=false;await put('matches',m);
+  const s=m.sets[m.curSet];_setEndKey=m.id+'|'+m.curSet+'|'+s.us+'-'+s.them; // non riproporre subito "chiudi set": si sta correggendo
+  renderScout();toast(t('end.reopened'));
+}
+// chiude il set corrente: se la partita è finita la conclude, altrimenti apre il set successivo
+async function closeSet(){
+  const m=S.currentMatch;if(!m)return;
+  if(m.finished)return toast(t('end.already'));
+  const i=m.curSet,s=m.sets[i];
+  if(s.us+s.them>0&&matchOverAfter(m,i))return finishMatch(m);
+  m.sets.push({us:0,them:0});m.curSet=m.sets.length-1;S.subPending=null;
   await put('matches',m);renderScout();toast(t('set.new',{n:m.curSet+1}));
   // formazione del nuovo set (precompilata con quella del set precedente) + chi batte per primo
   if(teamPlayers().length>=6)lineupSheet();else serveSheet(t('set.whoFirst',{n:m.curSet+1})); // O3
-};
+}
+$('#newSetBtn').onclick=()=>closeSet();
 
 // timestamp del video attivo (file o youtube), null se non in modalità video
 function currentVideoTime(){
@@ -3379,10 +3482,16 @@ async function buildReportPdf(matchId){
   }finally{fr.remove();}
 }
 $('#pdfBtn').onclick=async()=>{
-  if(!S.currentTeam)return toast(t('team.selectFirst'));
-  const id=$('#statMatch').value,m=id==='all'?null:S.matches.find(x=>x.id===id);
   const btn=$('#pdfBtn');if(btn.disabled)return;
   btn.disabled=true;const old=btn.textContent;btn.textContent=t('pdf.preparing');
+  try{await sharePdf($('#statMatch').value);}finally{btn.disabled=false;btn.textContent=old;}
+};
+let _pdfBusy=false;
+async function sharePdf(id){
+  if(!S.currentTeam)return toast(t('team.selectFirst'));
+  if(_pdfBusy)return;_pdfBusy=true;
+  const m=id==='all'?null:S.matches.find(x=>x.id===id);
+  toast(t('pdf.preparing'));
   try{
     const blob=await buildReportPdf(id);
     const name='vbscout-report-'+[S.currentTeam.name,m?('vs '+m.opponent):t('rep.summary').toLowerCase(),m?.date||localISODate()].join('_').replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,'-')+'.pdf';
@@ -3397,8 +3506,8 @@ $('#pdfBtn').onclick=async()=>{
     if(canShare)$('#pdfShare').onclick=async()=>{try{await navigator.share({files:[file],title:name.replace(/\.pdf$/,'')});closeModal();}catch(err){if(err&&err.name!=='AbortError')toast(t('pdf.shareFail'));}};
     $('#pdfSave').onclick=()=>{download(blob,name,'application/pdf');closeModal();toast(t('pdf.downloaded'));};
   }catch(err){console.error(err);toast(t('pdf.error'));}
-  finally{btn.disabled=false;btn.textContent=old;}
-};
+  finally{_pdfBusy=false;}
+}
 // Azione da backup esterno: i campi a valori fissi devono essere validi, altrimenti vengono azzerati
 // (oppure l'azione viene scartata). Così un file modificato non può inserire HTML/script nell'app.
 const ZONE_RE=/^(NOI|AVV) Z[1-6]$/;
@@ -3434,7 +3543,7 @@ $('#importFile').onchange=e=>{
       if(!await confirmSheet(t('imp.q'),t('imp.msg'),t('imp.ok'),false))return;
       for(const t of d.teams||[])if(t&&t.id)await put('teams',t);
       for(const p of d.players||[]){if(!p||!p.id)continue;p.number=parseInt(p.number)||0;await put('players',p);} // numero sempre numerico (niente HTML da file esterni)
-      for(const m of d.matches||[])if(m&&m.id)await put('matches',m);
+      for(const m of d.matches||[]){if(!m||!m.id)continue;if(m.format)m.format=matchFormat(m);m.finished=!!m.finished;await put('matches',m);}
       for(const a of d.actions||[]){const c=cleanImportedAction(a);if(c)await put('actions',c);}
       await loadAll();await loadLic();renderMatchView();renderCtx();toast(t('imp.done'));
     }catch(_){toast(t('imp.invalid'));}
