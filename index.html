@@ -665,6 +665,10 @@ const I18N={
 'set.lang':["Lingua","Language","Sprache","Idioma","Langue"],
 // --- demo / sblocco ---
 'lic.full':["✓ Versione completa attiva su questo dispositivo","✓ Full version active on this device","✓ Vollversion auf diesem Gerät aktiv","✓ Versión completa activa en este dispositivo","✓ Version complète active sur cet appareil"],
+'lic.devId':["ID dispositivo","Device ID","Geräte-ID","ID del dispositivo","ID de l'appareil"],
+'lic.devHint':["Per un codice personale valido solo su questo dispositivo, manda questo ID.","For a personal code valid only on this device, send this ID.","Für einen persönlichen Code nur für dieses Gerät sende diese ID.","Para un código personal válido solo en este dispositivo, envía este ID.","Pour un code personnel valable uniquement sur cet appareil, envoie cet ID."],
+'lic.copy':["Copia","Copy","Kopieren","Copiar","Copier"],
+'lic.copied':["ID copiato","ID copied","ID kopiert","ID copiado","ID copié"],
 'lic.demo':["Versione demo","Demo version","Demoversion","Versión demo","Version démo"],
 'lic.left':["1 squadra · partite rimaste: {n} su {max}","1 team · matches left: {n} of {max}","1 Mannschaft · verbleibende Spiele: {n} von {max}","1 equipo · partidos restantes: {n} de {max}","1 équipe · matchs restants : {n} sur {max}"],
 'lic.unlockFull':["🔓 Sblocca versione completa","🔓 Unlock full version","🔓 Vollversion freischalten","🔓 Desbloquear versión completa","🔓 Débloquer la version complète"],
@@ -1436,8 +1440,11 @@ async function saveState(){await put('meta',{k:'state',currentTeam:S.currentTeam
 // =========================================================
 //  DEMO / SBLOCCO (senza login)
 //  Demo: 1 squadra e 2 partite (le copie "per scout da video" non contano).
-//  Sblocco: codice per dispositivo. Nel codice ci sono solo le impronte (SHA-256),
-//  non i codici in chiaro. Per revocare un dispositivo togli la sua impronta da UNLOCK_HASHES.
+//  Sblocco con codice. Nel codice ci sono solo le impronte (SHA-256), non i codici in chiaro.
+//  - UNLOCK_HASHES: codici validi su qualsiasi dispositivo  → SHA-256('vbscout:'+CODICE)
+//  - DEVICE_HASHES: codici validi su UN solo dispositivo    → SHA-256('vbscout-dev:'+IDDISPOSITIVO+':'+CODICE)
+//    (ID e codice normalizzati: maiuscole, senza trattini). L'ID dispositivo si vede nella schermata di sblocco.
+//  Per revocare togli l'impronta dalla lista.
 // =========================================================
 const DEMO_MAX_TEAMS=1, DEMO_MAX_MATCHES=2;
 const CONTACT_URL='https://instagram.com/joel86volley';
@@ -1448,7 +1455,30 @@ const UNLOCK_HASHES=[
   'dff59761f47dcc66190270dbf302a9768e7dd6c5e3e6ffb8a007487a5aeb15d1', // codice 4
   '347a192ff3ec20de4a8874451f7df80d745569a547c3dcaa6ab40e8894451e71', // codice 5
 ];
+// codici personali legati a un dispositivo (vedi sopra); commento = a chi è stato dato
+const DEVICE_HASHES=[
+];
 const LIC={unlocked:false,code:null,made:0};
+// ID dispositivo: generato a caso una volta e salvato sul dispositivo (cambia se si cancellano i dati dell'app)
+let DEVICE_ID=null;
+const DEV_ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // senza O/0 e I/1, facili da confondere
+async function loadDeviceId(){
+  const r=await getOne('meta','dev');
+  if(r&&/^[A-Z0-9]{8}$/.test(r.id)){DEVICE_ID=r.id;return;}
+  const b=crypto.getRandomValues(new Uint8Array(8));
+  DEVICE_ID=[...b].map(x=>DEV_ALPHA[x%DEV_ALPHA.length]).join('');
+  await put('meta',{k:'dev',id:DEVICE_ID});
+}
+const fmtDevId=id=>id?id.slice(0,4)+'-'+id.slice(4):'—';
+async function sha256hex(str){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+// codice valido? (universale oppure legato a questo dispositivo)
+async function isValidCode(c){
+  if(UNLOCK_HASHES.includes(await hashCode(c)))return true;
+  return !!DEVICE_ID&&DEVICE_HASHES.includes(await sha256hex('vbscout-dev:'+DEVICE_ID+':'+normCode(c)));
+}
 const normCode=c=>String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 async function hashCode(c){
   const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('vbscout:'+normCode(c)));
@@ -1459,7 +1489,7 @@ async function loadLic(){
   const r=await getOne('meta','lic')||{};
   LIC.code=r.code||null;LIC.made=Math.max(r.made||0,realMatches());
   LIC.unlocked=false;
-  if(LIC.code){try{LIC.unlocked=UNLOCK_HASHES.includes(await hashCode(LIC.code));}catch(_){}}
+  if(LIC.code){try{LIC.unlocked=await isValidCode(LIC.code);}catch(_){}}
   await saveLic();
 }
 async function saveLic(){await put('meta',{k:'lic',code:LIC.code,made:LIC.made});}
@@ -1480,11 +1510,18 @@ function limitSheet(why){
     <input class="inp" id="unlockCode" placeholder="VBS-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false">
     <button class="btn pri full" id="unlockOk" style="margin-top:12px">${t('lic.unlock')}</button>
     <a class="btn gho full" href="${CONTACT_URL}" target="_blank" rel="noopener" style="margin-top:8px;text-align:center;text-decoration:none">${t('lic.contact')}</a>
-    <button class="btn gho full" id="unlockNo" style="margin-top:8px">${t('c.close')}</button>`);
+    <button class="btn gho full" id="unlockNo" style="margin-top:8px">${t('c.close')}</button>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);text-align:center">
+      <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700">${t('lic.devId')}</div>
+      <div class="row" style="justify-content:center;align-items:center;gap:10px;margin:6px 0">
+        <b id="devIdTxt" style="font-size:22px;letter-spacing:2px;font-family:monospace;user-select:all">${fmtDevId(DEVICE_ID)}</b>
+        <button class="btn sm gho" id="devIdCopy">${t('lic.copy')}</button></div>
+      <div style="font-size:12px;color:var(--mut2)">${t('lic.devHint')}</div></div>`);
   $('#unlockNo').onclick=()=>closeModal();
+  $('#devIdCopy').onclick=async()=>{try{await navigator.clipboard.writeText(fmtDevId(DEVICE_ID));toast(t('lic.copied'));}catch(_){const r=document.createRange();r.selectNodeContents($('#devIdTxt'));const sl=getSelection();sl.removeAllRanges();sl.addRange(r);}};
   $('#unlockOk').onclick=async()=>{
     const c=$('#unlockCode').value;if(!normCode(c))return toast(t('lic.enterCode'));
-    let ok=false;try{ok=UNLOCK_HASHES.includes(await hashCode(c));}catch(_){return toast(t('lic.noHttps'));}
+    let ok=false;try{ok=await isValidCode(c);}catch(_){return toast(t('lic.noHttps'));}
     if(!ok)return toast(t('lic.invalid'));
     LIC.code=normCode(c);LIC.unlocked=true;await saveLic();
     closeModal();renderMatchView();toast(t('lic.activated'));
@@ -3620,6 +3657,7 @@ applyI18n(document);
   try{if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted()))await navigator.storage.persist();}catch(_){}
   await openDB();
   await loadAll();
+  await loadDeviceId();
   await loadLic();
   renderCtx();
   renderMatchView();
