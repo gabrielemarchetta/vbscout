@@ -9,7 +9,7 @@
    - Tutti i percorsi sono RELATIVI: funziona in qualunque cartella del repo.
 */
 
-const CACHE_VERSION = 'vbscout-v21';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
+const CACHE_VERSION = 'vbscout-v22';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
 const APP_SHELL = [
   './',
   './index.html',
@@ -18,7 +18,13 @@ const APP_SHELL = [
   './icon-512.png',
   './icon-maskable-512.png',
   './vendor/jspdf.umd.min.js',      // report PDF anche offline
-  './vendor/html2canvas.min.js'
+  './vendor/html2canvas.min.js',
+  // font locali (prima arrivavano da Google Fonts: offline non erano garantiti)
+  './vendor/fonts/manrope-latin.woff2',
+  './vendor/fonts/saira-condensed-500-latin.woff2',
+  './vendor/fonts/saira-condensed-600-latin.woff2',
+  './vendor/fonts/saira-condensed-700-latin.woff2',
+  './vendor/fonts/saira-condensed-800-latin.woff2'
 ];
 
 // --- install: precarica l'app shell ---
@@ -43,7 +49,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
-  // solo file della nostra app: YouTube, Google Fonts ecc. vanno direttamente in rete
+  // solo file della nostra app: YouTube ecc. vanno direttamente in rete
   // (cache-first su script esterni rischia di tenere versioni vecchie, es. YouTube IFrame API)
   if (new URL(req.url).origin !== self.location.origin) return;
 
