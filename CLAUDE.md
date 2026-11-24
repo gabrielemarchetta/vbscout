@@ -7,10 +7,11 @@
 
 ## Stack obbligatorio
 - Solo HTML, CSS e JavaScript vanilla. Niente framework (React, Vue...) e niente build step (npm, bundler).
-- Niente librerie da CDN. Le uniche librerie ammesse sono quelle già salvate in `vendor/` (jsPDF, html2canvas); per aggiungerne altre chiedimelo prima.
+- Niente librerie da CDN. Le uniche librerie ammesse sono quelle già salvate in `vendor/` (jsPDF, html2canvas, font); per aggiungerne altre chiedimelo prima. Firebase si usa senza SDK, con chiamate dirette (`fetch`) alle sue API.
 - Mobile-first: il layout parte dallo smartphone in verticale, poi si adatta a tablet e desktop.
 - PWA offline: manifest.json + service worker. L'app deve funzionare completamente senza rete dopo il primo caricamento.
-- Dati salvati in locale (localStorage o IndexedDB). Nessun backend.
+- Dati di squadre, giocatori, partite e statistiche salvati solo in locale (IndexedDB): non vanno mai mandati su un server.
+- Unico backend ammesso: **Firebase** (Authentication email/password + Firestore), solo per login e licenze. Vedi la sezione "Login e licenze".
 - Ad ogni modifica dell'app incrementa `CACHE_VERSION` in `sw.js` (es. `vbscout-v21` → `vbscout-v22`). Se aggiungi un file, inseriscilo anche in `APP_SHELL`.
 
 ## Struttura
@@ -40,6 +41,16 @@
 ## Git
 - Un commit per ogni modifica logica, messaggio in italiano chiaro (es. "Aggiunta statistica ricezione per rotazione").
 - Lavora su un branch e apri una pull request; non fare push su `main` e non cancellare file senza chiedermelo.
+
+## Login e licenze (Firebase)
+- La demo resta utilizzabile **senza account** (1 squadra, 2 partite). Il login serve solo a sbloccare la versione completa.
+- Accesso con email e password tramite Firebase Authentication: niente password salvate o gestite dall'app, niente login fatto in casa.
+- Licenze in Firestore, collezione `licenze`, un documento per utente (id = UID) con piano e scadenza. Ogni utente può solo leggere la propria; le scrive solo l'amministratore (pannello Firebase) o, in futuro, il sistema di pagamento.
+- Server Firebase in Europa. Le regole di sicurezza di Firestore stanno nel repo (`firestore.rules`) e vanno tenute allineate al pannello.
+- Offline: l'ultima verifica della licenza vale 14 giorni, poi serve rete. L'app non deve mai bloccarsi in palestra per mancanza di connessione.
+- La configurazione web di Firebase (apiKey, authDomain, projectId) è pubblica per natura e può stare in `index.html`. Chiavi private, account di servizio e segreti non vanno mai nel repo.
+- I codici di sblocco attuali (UNLOCK_HASHES, DEVICE_HASHES) restano validi fino a quando decido di toglierli.
+- Raccogliere email richiede un'informativa privacy: aggiornarla se cambia cosa si raccoglie.
 
 ## Note specifiche di VBScout
 - App di scouting pallavolo: live e da video, con traiettorie, zone ed esiti.
