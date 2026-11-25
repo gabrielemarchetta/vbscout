@@ -1,0 +1,17 @@
+rules_version = '2';
+// Regole di sicurezza di Firestore per VBScout.
+// Copia di quelle pubblicate nel pannello Firebase (Firestore Database → Regole): tenerle allineate.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ogni utente può leggere SOLO la propria licenza; nessuno può scriverla dall'app
+    // (le licenze si creano dal pannello Firebase, che ha i permessi di amministratore)
+    match /licenze/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // tutto il resto è chiuso
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
