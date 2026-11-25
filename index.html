@@ -285,6 +285,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 .toast.act{display:flex;align-items:center;gap:14px;pointer-events:none;padding:8px 8px 8px 16px}
 .toast.act.show{pointer-events:auto}
 .toast.act button{background:var(--acc);color:var(--on-acc);font-weight:800;padding:8px 14px;border-radius:9px;font-size:13px;min-height:40px}
+.arcb{color:#fff;font-weight:800;font-size:11px;padding:2px 7px;border-radius:6px;letter-spacing:.3px}
 .upd-banner{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:85;background:var(--blue);color:var(--on-blue);font-weight:800;font-size:13px;padding:11px 16px;border-radius:12px;box-shadow:0 10px 30px var(--shadow);max-width:calc(100% - 32px);min-height:44px}
 
 /* ---------- modal ---------- */
@@ -317,6 +318,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
 <!-- ============ MATCH / SETUP VIEW ============ -->
 <section class="view" id="v-match">
+  <div id="bkBanner"></div>
   <div class="sec-title" data-i18n="match.current">Partita corrente</div>
   <div class="card" id="matchCard"></div>
 
@@ -761,6 +763,29 @@ const I18N={
 'match.sets':["Set","Sets","Sätze","Sets","Sets"],
 'match.goScout':["▶ Vai allo scouting","▶ Go to scouting","▶ Zum Scouting","▶ Ir al scouting","▶ Aller au scouting"],
 'match.edit':["Modifica partita","Edit match","Spiel bearbeiten","Editar partido","Modifier le match"],
+'rep.pdfShort':["Report PDF","PDF report","PDF-Bericht","Informe PDF","Rapport PDF"],
+'home.resume':["▶ Riprendi · Set {n} · {sc}","▶ Resume · Set {n} · {sc}","▶ Fortsetzen · Satz {n} · {sc}","▶ Reanudar · Set {n} · {sc}","▶ Reprendre · Set {n} · {sc}"],
+'home.start':["▶ Inizia lo scouting","▶ Start scouting","▶ Scouting starten","▶ Empezar el scouting","▶ Commencer le scouting"],
+'home.won':["🏆 Vinta {r}","🏆 Won {r}","🏆 Gewonnen {r}","🏆 Ganado {r}","🏆 Gagné {r}"],
+'home.lost':["Persa {r}","Lost {r}","Verloren {r}","Perdido {r}","Perdu {r}"],
+'home.ended':["🏁 Conclusa {r}","🏁 Finished {r}","🏁 Beendet {r}","🏁 Terminado {r}","🏁 Terminé {r}"],
+'home.live':["In corso {r}","In progress {r}","Läuft {r}","En curso {r}","En cours {r}"],
+'home.toPlay':["Da giocare","To be played","Noch zu spielen","Por jugar","À jouer"],
+'home.step1':["1 · Crea la tua squadra","1 · Create your team","1 · Erstelle deine Mannschaft","1 · Crea tu equipo","1 · Crée ton équipe"],
+'home.step1d':["Inizia dal nome della squadra che vuoi scoutare.","Start with the name of the team you want to scout.","Beginne mit dem Namen der Mannschaft, die du scouten willst.","Empieza por el nombre del equipo que quieres analizar.","Commence par le nom de l'équipe que tu veux scouter."],
+'home.step2':["2 · Aggiungi i giocatori","2 · Add the players","2 · Spieler hinzufügen","2 · Añade los jugadores","2 · Ajoute les joueurs"],
+'home.step2d':["Almeno 6 giocatori più il libero, con numero e ruolo: servono per formazione e rotazioni.","At least 6 players plus the libero, with number and role: needed for lineup and rotations.","Mindestens 6 Spieler plus Libero, mit Nummer und Position: nötig für Aufstellung und Rotationen.","Al menos 6 jugadores más el líbero, con número y rol: necesarios para alineación y rotaciones.","Au moins 6 joueurs plus le libéro, avec numéro et poste : nécessaires pour la composition et les rotations."],
+'home.goRoster':["Vai alla Rosa","Go to Roster","Zum Kader","Ir a la plantilla","Aller à l'effectif"],
+'home.step3':["3 · Crea la prima partita","3 · Create the first match","3 · Erstes Spiel anlegen","3 · Crea el primer partido","3 · Crée le premier match"],
+'home.step3d':["Avversario, data e formato: poi si parte con lo scout.","Opponent, date and format: then scouting starts.","Gegner, Datum und Format: dann geht das Scouting los.","Rival, fecha y formato: y empieza el scouting.","Adversaire, date et format : puis le scouting commence."],
+'bk.never':["💾 Non hai ancora fatto un backup","💾 You haven't made a backup yet","💾 Noch kein Backup erstellt","💾 Aún no has hecho una copia de seguridad","💾 Tu n'as pas encore fait de sauvegarde"],
+'bk.days':["💾 Ultimo backup {n} giorni fa","💾 Last backup {n} days ago","💾 Letztes Backup vor {n} Tagen","💾 Última copia hace {n} días","💾 Dernière sauvegarde il y a {n} jours"],
+'bk.msg':["I dati sono solo su questo dispositivo: un backup ti protegge se lo perdi o lo cambi.","Your data is only on this device: a backup protects you if you lose or replace it.","Die Daten sind nur auf diesem Gerät: ein Backup schützt dich bei Verlust oder Wechsel.","Los datos están solo en este dispositivo: una copia te protege si lo pierdes o lo cambias.","Les données sont seulement sur cet appareil : une sauvegarde te protège si tu le perds ou le changes."],
+'bk.btn':["Fai backup ora","Back up now","Jetzt sichern","Hacer copia ahora","Sauvegarder maintenant"],
+'bk.done':["Backup salvato: conservalo fuori dal dispositivo (Drive, email…)","Backup saved: keep it off the device (Drive, email…)","Backup gespeichert: außerhalb des Geräts aufbewahren (Drive, E-Mail…)","Copia guardada: guárdala fuera del dispositivo (Drive, email…)","Sauvegarde enregistrée : garde-la hors de l'appareil (Drive, e-mail…)"],
+'lu.fromLast':["Precompilata con la formazione dell'ultima partita: controllala prima di confermare.","Pre-filled with the last match's lineup: check it before confirming.","Vorausgefüllt mit der Aufstellung des letzten Spiels: vor dem Bestätigen prüfen.","Rellenada con la alineación del último partido: revísala antes de confirmar.","Pré-remplie avec la composition du dernier match : vérifie-la avant de confirmer."],
+'arc.W':["V","W","S","V","V"],
+'arc.L':["P","L","N","D","D"],
 'match.none':["Nessuna partita attiva","No active match","Kein aktives Spiel","Ningún partido activo","Aucun match actif"],
 'match.new':["+ Nuova partita","+ New match","+ Neues Spiel","+ Nuevo partido","+ Nouveau match"],
 'match.active':["Attiva","Active","Aktiv","Activo","Actif"],
@@ -1645,7 +1670,9 @@ function applyLicState(){LIC.unlocked=!!LIC.byCode||acctLicValid();}
 let _licChecking=false;
 async function refreshAcctLicense(force){
   if(!ACCT||_licChecking)return;
-  if(!force&&Date.now()-(ACCT.checkedAt||0)<6*3600000)return; // al massimo ogni 6 ore
+  // licenza valida: ricontrollo al massimo ogni 6 ore; senza licenza valida a ogni apertura
+  // (così una licenza attivata dal pannello viene vista subito)
+  if(!force&&acctLicValid()&&Date.now()-(ACCT.checkedAt||0)<6*3600000)return;
   _licChecking=true;const before=LIC.unlocked;
   try{await fbCheckLicense();}catch(e){
     // refresh token revocato / account eliminato: esci dall'account (i dati locali restano)
@@ -1818,26 +1845,77 @@ function renderCtx(){
   $('#ctxTeam').textContent=S.currentTeam?S.currentTeam.name:t('ctx.noTeam');
   $('#ctxMatch').textContent=S.currentMatch?('vs '+S.currentMatch.opponent):t('ctx.noMatch');
 }
+// stato della partita per la home: 'ready' (da giocare) | 'live' (in corso) | 'won' | 'lost' | 'ended' (set fissi)
+function playedSets(m){return (m.sets||[]).filter(s=>(s.us||0)+(s.them||0)>0);}
+function matchState(m){
+  if(!playedSets(m).length)return 'ready';
+  if(!m.finished)return 'live';
+  if(matchFormat(m).type==='fixed')return 'ended';
+  const w=setsWon(m,m.sets.length-1);return w.us>w.opp?'won':'lost';
+}
+// data della partita leggibile (es. "sab 21 nov 2026"); la data salvata resta YYYY-MM-DD
+function fmtMatchDate(d){
+  const x=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d||'');if(!x)return d||'';
+  return new Date(+x[1],+x[2]-1,+x[3]).toLocaleDateString(LOCALES[LANG],{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function guideStep(n,title,desc,btn,id){
+  const dots=[1,2,3].map(i=>`<span style="width:28px;height:6px;border-radius:3px;background:${i<=+n?'var(--acc)':'var(--line2)'}"></span>`).join('');
+  return `<div class="row" style="gap:6px;margin-bottom:12px">${dots}</div>
+    <div class="disp" style="font-size:22px;font-weight:800">${title}</div>
+    <p style="color:var(--mut);font-size:14px;line-height:1.4;margin:6px 0 14px">${desc}</p>
+    <button class="btn pri full" id="${id}">${btn}</button>`;
+}
+// promemoria backup: se ci sono partite giocate e l'ultimo backup è assente o più vecchio di 7 giorni
+function renderBackupBanner(){
+  const b=$('#bkBanner');if(!b)return;
+  const played=S.matches.some(m=>playedSets(m).length);
+  const age=S.lastBackup?Math.floor((Date.now()-S.lastBackup)/DAY):null;
+  if(!played||(age!=null&&age<7)){b.innerHTML='';return;}
+  b.innerHTML=`<div class="card" style="margin:12px 0 4px;border-color:var(--acc);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="grow" style="min-width:180px"><b style="font-size:14px">${age==null?t('bk.never'):t('bk.days',{n:age})}</b>
+      <div style="font-size:12px;color:var(--mut);margin-top:3px">${t('bk.msg')}</div></div>
+    <button class="btn sm pri" id="bkNow">${t('bk.btn')}</button></div>`;
+  $('#bkNow').onclick=()=>$('#exportJson').click();
+}
 function renderMatchView(){
   renderCtx();
   // current match card
   const mc=$('#matchCard');
+  renderBackupBanner();
   if(S.currentMatch){
-    const m=S.currentMatch;
-    const sets=(m.sets||[]).map((s,i)=>`<b style="color:var(--acc2)">${s.us}</b>-${s.them}`).join(' · ')||'—';
+    const m=S.currentMatch,st=matchState(m);
+    const sets=playedSets(m).map(s=>`<b style="color:var(--acc2)">${s.us}</b>-${s.them}`).join(' · ')||'—';
+    const s=m.sets[m.curSet]||{us:0,them:0};
+    const head=st==='won'?t('home.won',{r:matchResultText(m)}):st==='lost'?t('home.lost',{r:matchResultText(m)}):st==='ended'?t('home.ended',{r:matchResultText(m)}):'';
+    const headCol=st==='won'?'var(--good)':st==='lost'?'var(--bad)':'var(--acc2)';
+    const btns=st==='won'||st==='lost'||st==='ended'
+      ?`<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">
+          <button class="btn pri grow" id="homePdf">📄 ${t('rep.pdfShort')}</button>
+          <button class="btn gho grow" id="homeBk">⬇ Backup</button></div>
+        <div class="row" style="margin-top:8px;gap:8px"><button class="btn gho grow" id="newMatch">${t('match.new')}</button>
+          <button class="btn gho" id="editMatch" aria-label="${t('match.edit')}">✎</button></div>`
+      :`<div class="row" style="margin-top:14px">
+          <button class="btn pri grow" id="goScout">${st==='live'?t('home.resume',{n:m.curSet+1,sc:s.us+'-'+s.them}):t('home.start')}</button>
+          <button class="btn gho" id="editMatch" aria-label="${t('match.edit')}">✎</button></div>`;
     mc.innerHTML=`<div class="row" style="align-items:center">
-        <div class="grow"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700">${m.homeAway==='home'?t('match.home'):t('match.away')} · ${esc(m.date)}</div>
+        <div class="grow"><div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700">${m.homeAway==='home'?t('match.home'):t('match.away')} · ${esc(fmtMatchDate(m.date))}</div>
+        ${head?`<div style="font-size:15px;font-weight:800;color:${headCol};margin-top:4px">${head}</div>`:''}
         <div class="disp" style="font-size:24px;font-weight:800;margin-top:2px">${esc(S.currentTeam?.name||t('c.us'))} <span style="color:var(--mut)">vs</span> ${esc(m.opponent)}</div>
-        <div style="color:var(--mut);font-size:14px;margin-top:4px">${t('match.sets')}: ${sets}${m.finished?` · <b style="color:var(--acc2)">🏁 ${t('end.tag')} ${matchResultText(m)}</b>`:''}</div></div></div>
-      <div class="row" style="margin-top:14px">
-        <button class="btn pri grow" id="goScout">${t('match.goScout')}</button>
-        <button class="btn gho" id="editMatch" aria-label="${t('match.edit')}">✎</button>
-      </div>`;
-    $('#goScout').onclick=()=>show('scout');
+        <div style="color:var(--mut);font-size:14px;margin-top:4px">${st==='ready'?t('home.toPlay'):t('match.sets')+': '+sets}</div></div></div>${btns}`;
+    const go=$('#goScout');if(go)go.onclick=()=>show('scout');
     $('#editMatch').onclick=()=>matchSheet(m);
+    const hp=$('#homePdf');if(hp)hp.onclick=()=>sharePdf(m.id);
+    const hb=$('#homeBk');if(hb)hb.onclick=()=>$('#exportJson').click();
+    const nm=$('#newMatch');if(nm)nm.onclick=()=>matchSheet();
+  }else if(!S.currentTeam){
+    // primo avvio guidato: 1 squadra → 2 giocatori → 3 partita
+    mc.innerHTML=guideStep('1',t('home.step1'),t('home.step1d'),t('team.add'),'guideGo');
+    $('#guideGo').onclick=()=>$('#addTeamBtn').click();
+  }else if(teamPlayers().length<6){
+    mc.innerHTML=guideStep('2',t('home.step2'),t('home.step2d'),t('home.goRoster'),'guideGo');
+    $('#guideGo').onclick=()=>show('roster');
   }else{
-    mc.innerHTML=`<div class="empty" style="padding:22px 8px"><div class="big">🏐</div>${t('match.none')}</div>
-      <button class="btn pri full" id="newMatch">${t('match.new')}</button>`;
+    mc.innerHTML=guideStep('3',t('home.step3'),t('home.step3d'),t('match.new'),'newMatch');
     $('#newMatch').onclick=()=>matchSheet();
   }
   // teams
@@ -1860,13 +1938,25 @@ function renderMatchView(){
     // nothing
   }
   // archive
-  const arc=S.matches.filter(m=>m.teamId===S.currentTeam?.id).sort((a,b)=>b.createdAt-a.createdAt);
+  // archivio: partite più recenti prima (per data della partita), raggruppate per mese
+  const arc=S.matches.filter(m=>m.teamId===S.currentTeam?.id).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||b.createdAt-a.createdAt);
+  let lastMonth='';
   $('#matchArchive').innerHTML=(arc.length?arc.map(m=>{
-    const sets=(m.sets||[]).map(s=>`${s.us}-${s.them}`).join(' ')||'—';
-    const fin=m.finished?` <span style="color:var(--acc2);font-weight:800;font-size:11px">🏁 ${t('end.tag')} ${matchResultText(m)}</span>`:'';
-    return `<div class="logrow" style="padding:12px"><div class="grow"><b>vs ${esc(m.opponent)}</b> <span style="color:var(--mut2);font-size:11px">${esc(m.date)}</span>${fin}<div style="color:var(--mut);font-size:12px;margin-top:2px">${sets}</div></div>
-      <button class="btn sm ${m.id===S.currentMatch?.id?'pri':'gho'}" data-setcur="${m.id}">${m.id===S.currentMatch?.id?t('match.active'):t('match.open')}</button></div>`;
-  }).join(''):'')+(S.currentTeam?`<button class="btn gho full" id="newMatch2" style="margin-top:6px">${t('match.new')}</button>`:'');
+    const st=matchState(m),r=matchResultText(m);
+    const badge=st==='won'?`<span class="arcb" style="background:var(--good)">${t('arc.W')} ${r}</span>`
+      :st==='lost'?`<span class="arcb" style="background:var(--bad)">${t('arc.L')} ${r}</span>`
+      :st==='ended'?`<span class="arcb" style="background:var(--acc2)">🏁 ${r}</span>`
+      :st==='live'?`<span style="color:var(--acc2);font-weight:800;font-size:11px">${t('home.live',{r})}</span>`
+      :`<span style="color:var(--mut2);font-size:11px">${t('home.toPlay')}</span>`;
+    const sets=playedSets(m).map(s=>`${s.us}-${s.them}`).join(' · ');
+    const x=/^(\d{4})-(\d{2})/.exec(m.date||''),mk=x?x[1]+x[2]:'';
+    const month=mk&&mk!==lastMonth?`<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700;margin:12px 2px 6px">${esc(new Date(+x[1],+x[2]-1,1).toLocaleDateString(LOCALES[LANG],{month:'long',year:'numeric'}))}</div>`:'';
+    if(mk)lastMonth=mk;
+    const act=m.id===S.currentMatch?.id;
+    return `${month}<div class="logrow" style="padding:12px;${act?'border-color:var(--acc)':''}"><div class="grow"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>vs ${esc(m.opponent)}</b>${badge}</div>
+      <div style="color:var(--mut2);font-size:11px;margin-top:3px">${esc(fmtMatchDate(m.date))}${sets?` · <span style="color:var(--mut)">${sets}</span>`:''}</div></div>
+      <button class="btn sm ${act?'pri':'gho'}" data-setcur="${m.id}">${act?t('match.active'):t('match.open')}</button></div>`;
+  }).join(''):'')+(S.currentTeam&&!$('#newMatch')?`<button class="btn gho full" id="newMatch2" style="margin-top:6px">${t('match.new')}</button>`:''); // sempre disponibile se non è già nel riquadro in alto
   $$('[data-setcur]').forEach(b=>b.onclick=async()=>{S.currentMatch=S.matches.find(m=>m.id===b.dataset.setcur);await saveState();renderMatchView();renderCtx();toast(t('match.activated'));});
   const nm2=$('#newMatch2');if(nm2)nm2.onclick=()=>matchSheet();
   $('#licBox').innerHTML=licBadgeHtml();
@@ -2486,6 +2576,16 @@ $('#subBtn').onclick=()=>{
   };
 };
 
+function lastMatchLineup(m){
+  const ids=new Set(teamPlayers().map(p=>p.id));
+  const prevM=S.matches.filter(x=>x.teamId===m.teamId&&x.id!==m.id&&x.sets&&x.sets[0]&&x.sets[0].lu)
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||b.createdAt-a.createdAt)[0];
+  if(!prevM)return null;
+  const l=prevM.sets[0].lu,lineup={...(l.startLineup||l.lineup||{})};
+  for(const z in lineup)if(!ids.has(lineup[z]))lineup[z]=null; // giocatori tolti dalla rosa
+  const keep=id=>id&&ids.has(id)?id:null;
+  return {lineup,setterId:keep(l.startSetterId||l.setterId),libero:keep(l.libero),libero2:keep(l.libero2),libSplit:l.libSplit,libAuto:l.libAuto};
+}
 function lineupSheet(){
   const m=S.currentMatch;if(!m)return toast(t('match.none'));
   const pls=teamPlayers();
@@ -2494,7 +2594,9 @@ function lineupSheet(){
   // default: formazione già salvata per questo set → set precedente → formazione legacy a livello partita
   const prev=m.sets.slice(0,m.curSet).reverse().find(x=>x.lu)?.lu;
   const tpl=m.luTemplate&&m.luTemplate[m.curSet];
-  const src=set.lu||tpl||prev||(m.lineup?m:null)||{};
+  // nuova partita: formazione di partenza dell'ultima partita della squadra (solo se i giocatori sono ancora in rosa)
+  const lastLu=(!set.lu&&!tpl&&!prev)?lastMatchLineup(m):null;
+  const src=set.lu||tpl||prev||lastLu||(m.lineup?m:null)||{};
   const lu=(!set.lu&&src.startLineup)||src.lineup||{};
   const setterSrc=(!set.lu&&src.startSetterId)||src.setterId; // palleggiatore di partenza (non il sostituto)
   const started=(set.us+set.them)>0;
@@ -2505,7 +2607,7 @@ function lineupSheet(){
   const srv=started?(set.firstServe||''):(set.serve||set.firstServe||(tpl&&tpl.firstServe)||'');
   modal(`<h2 style="margin:0 0 4px;font-size:22px">${t('sb.lineup')} · ${t('set.n',{n:m.curSet+1})}</h2>
     <p style="color:var(--mut);margin:0 0 12px;font-size:13px">${t('lu.intro')}</p>
-    ${tpl&&!set.lu?`<p style="color:var(--teal);font-size:12px;margin:0 0 8px">${t('lu.fromLive')}</p>`:prev&&!set.lu?`<p style="color:var(--teal);font-size:12px;margin:0 0 8px">${t('lu.fromPrev')}</p>`:''}
+    ${lastLu?`<p style="color:var(--teal);font-size:12px;margin:0 0 8px">${t('lu.fromLast')}</p>`:''}${tpl&&!set.lu?`<p style="color:var(--teal);font-size:12px;margin:0 0 8px">${t('lu.fromLive')}</p>`:prev&&!set.lu?`<p style="color:var(--teal);font-size:12px;margin:0 0 8px">${t('lu.fromPrev')}</p>`:''}
     <div class="lupv" id="luPrev" data-net="${t('lu.net')}" aria-label="${t('lu.preview')}"></div>
     <div class="row" style="gap:8px;margin:8px 0">
       <button type="button" class="btn sm gho grow" id="luRotBack">↺ ${t('lu.rotBack')}</button>
@@ -3696,6 +3798,8 @@ $('#exportJson').onclick=async()=>{
   const data={app:'vbscout',version:1,exportedAt:new Date().toISOString(),
     teams:await getAll('teams'),players:await getAll('players'),matches:await getAll('matches'),actions:await getAll('actions')};
   download(JSON.stringify(data,null,2),'vbscout-backup-'+localISODate()+'.json','application/json');
+  S.lastBackup=Date.now();await put('meta',{k:'bk',at:S.lastBackup});
+  toast(t('bk.done'));if(curView==='match')renderMatchView();
 };
 $('#exportCsv').onclick=async()=>{
   let acts=await getAll('actions');
@@ -3922,6 +4026,7 @@ applyI18n(document);
   await loadDeviceId();
   await loadAcct();
   await loadLic();
+  try{S.lastBackup=((await getOne('meta','bk'))||{}).at||0;}catch(_){S.lastBackup=0;}
   renderCtx();
   renderMatchView();
   fixNavPad();
