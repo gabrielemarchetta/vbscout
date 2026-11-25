@@ -1036,16 +1036,16 @@ const I18N={
 // --- libero ---
 'lib.in':[" · entra libero #{n} (Z{z})"," · libero #{n} in (Z{z})"," · Libero #{n} kommt (Z{z})"," · entra líbero #{n} (Z{z})"," · le libéro #{n} entre (Z{z})"],
 'lib.out':[" · esce il libero"," · libero out"," · Libero geht raus"," · sale el líbero"," · le libéro sort"],
-'lib.outMb':[" · esce il libero, batte il centrale"," · libero out, middle serves"," · Libero raus, Mittelblocker schlägt auf"," · sale el líbero, saca el central"," · le libéro sort, le central sert"],
+'lib.outMb':[" · esce il libero, batte {name}"," · libero out, {name} serves"," · Libero raus, {name} schlägt auf"," · sale el líbero, saca {name}"," · le libéro sort, {name} sert"],
 'lib.autoTitle':["Il libero entra ed esce da solo a ogni cambio palla","The libero goes in and out automatically on every side-out","Der Libero wechselt bei jedem Side-out automatisch","El líbero entra y sale solo en cada cambio de saque","Le libéro entre et sort seul à chaque side-out"],
 'lib.rec':["L ric.","L rec.","L Ann.","L rec.","L réc."],
 'lib.dig':["L dif.","L dig","L Abw.","L def.","L déf."],
-'lib.mbServes':["batte il centrale","middle serves","Mittelblocker schlägt auf","saca el central","le central sert"],
+'lib.mbServes':["batte {name}","{name} serves","{name} schlägt auf","saca {name}","{name} sert"],
 'lib.autoOn':["🤖 Libero automatico: entra ed esce da solo","🤖 Automatic libero: goes in and out by itself","🤖 Automatischer Libero: wechselt selbstständig","🤖 Líbero automático: entra y sale solo","🤖 Libéro automatique : entre et sort seul"],
 'lib.autoOff':["Libero manuale: usa i pulsanti per farlo entrare/uscire","Manual libero: use the buttons to bring them in/out","Manueller Libero: mit den Tasten ein-/auswechseln","Líbero manual: usa los botones para que entre/salga","Libéro manuel : utilise les boutons pour le faire entrer/sortir"],
-'lib.inZ':["Libero dentro · al posto del centrale in Z{z}","Libero in · replacing the middle in Z{z}","Libero drin · für den Mittelblocker in Z{z}","Líbero dentro · en lugar del central en Z{z}","Libéro sur le terrain · à la place du central en Z{z}"],
-'lib.inNoMb':["Libero dentro · nessun centrale in seconda linea ora","Libero in · no middle in the back row now","Libero drin · gerade kein Mittelblocker hinten","Líbero dentro · ahora no hay central en zaga","Libéro sur le terrain · pas de central en arrière"],
-'lib.outBack':["Libero fuori · rientra il centrale","Libero out · middle back in","Libero raus · Mittelblocker kommt zurück","Líbero fuera · vuelve el central","Libéro sorti · le central revient"],
+'lib.inZ':["Libero dentro · al posto di {name} in Z{z}","Libero in · replacing {name} in Z{z}","Libero drin · für {name} in Z{z}","Líbero dentro · en lugar de {name} en Z{z}","Libéro entré · à la place de {name} en Z{z}"],
+'lib.inNoMb':["Libero dentro · ora nessun giocatore da sostituire in seconda linea","Libero in · no player to replace in the back row now","Libero drin · gerade niemand hinten zu ersetzen","Líbero dentro · ahora nadie a quien sustituir atrás","Libéro entré · personne à remplacer en défense pour l'instant"],
+'lib.outBack':["Libero fuori · rientra il titolare","Libero out · the starter is back","Libero raus · Stammspieler zurück","Líbero fuera · vuelve el titular","Libéro sorti · le titulaire revient"],
 'lib.manual':["(manuale)","(manual)","(manuell)","(manual)","(manuel)"],
 // --- formazione ---
 'lu.need6':["Servono almeno 6 giocatori in rosa","You need at least 6 players in the roster","Mindestens 6 Spieler im Kader nötig","Se necesitan al menos 6 jugadores en la plantilla","Il faut au moins 6 joueurs dans l'effectif"],
@@ -1061,8 +1061,11 @@ const I18N={
 'lu.rotFwd':["Ruota avanti","Rotate forward","Vorrotieren","Rotar adelante","Tourner en avant"],
 'lu.lib1':["Libero 1 (opz.)","Libero 1 (opt.)","Libero 1 (opt.)","Líbero 1 (opc.)","Libéro 1 (fac.)"],
 'lu.lib2':["Libero 2 (opz.)","Libero 2 (opt.)","Libero 2 (opt.)","Líbero 2 (opc.)","Libéro 2 (fac.)"],
+'lu.libFor':["Il libero entra al posto di:","The libero replaces:","Der Libero ersetzt:","El líbero entra en lugar de:","Le libéro remplace :"],
+'lu.libForHint':["Tocca per scegliere (di solito i centrali). Puoi sceglierne più di uno.","Tap to choose (usually the middles). You can choose more than one.","Tippen zum Auswählen (meist die Mittelblocker). Mehrere möglich.","Toca para elegir (normalmente los centrales). Puedes elegir más de uno.","Touche pour choisir (en général les centraux). Plusieurs possibles."],
+'lu.libForNone':["Nessun giocatore scelto: il libero non entrerà da solo.","No player chosen: the libero won't come in automatically.","Kein Spieler gewählt: der Libero kommt nicht automatisch.","Ningún jugador elegido: el líbero no entrará solo.","Aucun joueur choisi : le libéro n'entrera pas tout seul."],
 'lu.split':["L1 in ricezione, L2 in difesa (cambio automatico)","L1 in reception, L2 in defence (automatic switch)","L1 in der Annahme, L2 in der Abwehr (automatischer Wechsel)","L1 en recepción, L2 en defensa (cambio automático)","L1 en réception, L2 en défense (changement automatique)"],
-'lu.libNote':["Il libero entra da solo al posto del centrale in seconda linea ed esce quando il centrale deve battere.","The libero automatically replaces the middle blocker in the back row and comes out when the middle has to serve.","Der Libero ersetzt hinten automatisch den Mittelblocker und geht raus, wenn dieser aufschlagen muss.","El líbero sustituye solo al central en zaga y sale cuando el central tiene que sacar.","Le libéro remplace seul le central en arrière et sort quand le central doit servir."],
+'lu.libNote':["Il libero entra da solo al posto dei giocatori scelti qui sotto quando sono in seconda linea, ed esce quando devono battere.","The libero automatically replaces the players chosen below when they are in the back row, and goes out when they have to serve.","Der Libero ersetzt automatisch die unten gewählten Spieler, wenn sie hinten sind, und geht raus, wenn sie aufschlagen müssen.","El líbero sustituye automáticamente a los jugadores elegidos abajo cuando están en segunda línea, y sale cuando les toca sacar.","Le libéro remplace automatiquement les joueurs choisis ci-dessous quand ils sont en défense, et sort quand ils doivent servir."],
 'lu.whoServesFirst':["Chi batte primo?","Who serves first?","Wer schlägt zuerst auf?","¿Quién saca primero?","Qui sert en premier ?"],
 'lu.whoServedFirst':["Chi ha battuto per primo?","Who served first?","Wer hat zuerst aufgeschlagen?","¿Quién sacó primero?","Qui a servi en premier ?"],
 'lu.inProgress':["Set in corso: la rotazione attuale ({rot}) viene mantenuta.","Set in progress: the current rotation ({rot}) is kept.","Satz läuft: die aktuelle Rotation ({rot}) bleibt erhalten.","Set en curso: se mantiene la rotación actual ({rot}).","Set en cours : la rotation actuelle ({rot}) est conservée."],
@@ -2020,7 +2023,7 @@ function matchSheet(m){
     // demo: una sola copia video per partita, e niente copie di copie
     if(!LIC.unlocked&&(m.sourceMatch||S.matches.some(x=>x.sourceMatch===m.id)))return limitSheet(t('lic.oneCopy'));
     const tpl=(m.sets||[]).map(s=>{const l=s.lu;if(!l)return null;const c=JSON.parse(JSON.stringify(l));
-      if(c.startLineup){c.lineup=c.startLineup;c.setterId=c.startSetterId||c.setterId;delete c.startLineup;delete c.startSetterId;}c.rotStep=0;c.libIn=null;c.firstServe=s.firstServe||null;
+      if(c.startLineup){c.lineup=c.startLineup;c.setterId=c.startSetterId||c.setterId;if(c.startLibFor)c.libFor=c.startLibFor;delete c.startLineup;delete c.startSetterId;delete c.startLibFor;}c.rotStep=0;c.libIn=null;c.firstServe=s.firstServe||null;
       const sz=+Object.keys(c.lineup).find(z=>c.lineup[z]===c.setterId);if(sz)c.setterZone=sz;return c;});
     const nm={id:uid(),teamId:m.teamId,createdAt:Date.now(),opponent:m.opponent+' (video)',date:m.date,homeAway:m.homeAway,format:m.format,
       sets:[{us:0,them:0}],curSet:0,luTemplate:tpl,sourceMatch:m.id};
@@ -2178,20 +2181,28 @@ function wantedLibero(lu){
 }
 // Chi c'è DAVVERO in campo: come curZonePlayers ma con il libero al posto del centrale
 // in seconda linea. Ritorna {zones:{z:playerId}, libZone, replaced, lib, mbServes}.
+// giocatori che il libero sostituisce: scelti in formazione (lu.libFor); formazioni vecchie = i centrali
+function libTargets(lu,zp){
+  if(lu&&Array.isArray(lu.libFor))return lu.libFor;
+  return Object.values(zp||{}).filter(id=>isRole(S.players.find(p=>p.id===id),'centrale'));
+}
 function curOnCourt(){
   const zp=curZonePlayers();if(!zp)return null;
   const lu=curLU(),zones={...zp};let libZone=null,replaced=null,lib=wantedLibero(lu),mbServes=false;
-  const z=[5,6,1].find(z=>isRole(S.players.find(p=>p.id===zp[z]),'centrale'));
+  const tg=libTargets(lu,zp);
+  const z=[5,6,1].find(z=>zp[z]&&tg.includes(zp[z]));
   if(lib&&z===1&&libAuto(lu)&&phaseNow()==='K2'){lib=null;mbServes=true;} // il centrale va a battere
   if(lib&&z){replaced=zp[z];zones[z]=lib;libZone=z;}
   return {zones,libZone,replaced,lib:libZone?lib:null,mbServes};
 }
+// nome del titolare in zona 1 (chi batte al posto del libero)
+function libName(oc){const zp=curZonePlayers()||{},p=S.players.find(x=>x.id===zp[1]);return p?('#'+p.number+' '+shortName(p)):'';}
 // testo breve per il toast quando il libero entra/esce/cambia da solo
 function libChangeText(before,after){
   if(before===after)return '';
   const oc=curOnCourt();
   if(oc&&oc.lib){const p=S.players.find(x=>x.id===oc.lib);return t('lib.in',{n:p?p.number:'?',z:oc.libZone});}
-  return oc&&oc.mbServes?t('lib.outMb'):t('lib.out');
+  return oc&&oc.mbServes?t('lib.outMb',{name:libName(oc)}):t('lib.out');
 }
 function libKey(){const oc=curOnCourt();return oc&&oc.lib?oc.lib+'|'+oc.libZone:'';}
 // O2: mappa playerId → {ord, lbl} dei giocatori in campo nella rotazione corrente (+ liberi in panchina)
@@ -2227,7 +2238,7 @@ function renderLiberoBar(){
     const p=S.players.find(x=>x.id===id),on=cur===id;
     const lbl=split?(id===lu.libero?t('lib.rec'):t('lib.dig')):libs.length>1?('L'+(i+1)):t('role.libero');
     return `<button type="button" class="chip sm ${on?'on':''}" data-lib="${id}" aria-pressed="${on}">${on?'● ':'○ '}${lbl}${p?' · #'+p.number:''}${on&&oc.libZone?' · Z'+oc.libZone:''}</button>`;
-  }).join('')+(auto&&oc&&oc.mbServes?`<span style="font-size:11px;color:var(--mut2);align-self:center">${t('lib.mbServes')}</span>`:'');
+  }).join('')+(auto&&oc&&oc.mbServes?`<span style="font-size:11px;color:var(--mut2);align-self:center">${t('lib.mbServes',{name:libName(oc)})}</span>`:'');
   $('#liberoBar [data-libauto]').onclick=async()=>{
     lu.libAuto=!auto;if(!lu.libAuto)lu.libIn=cur; // passando a manuale resta in campo chi c'è ora
     await put('matches',S.currentMatch);renderScout();
@@ -2238,7 +2249,7 @@ function renderLiberoBar(){
     const id=b.dataset.lib;lu.libAuto=false;lu.libIn=cur===id?null:id;
     await put('matches',S.currentMatch);renderScout();
     const o=curOnCourt();
-    toast((lu.libIn?(o&&o.libZone?t('lib.inZ',{z:o.libZone}):t('lib.inNoMb')):t('lib.outBack'))+' '+t('lib.manual'));
+    toast((lu.libIn?(o&&o.libZone?t('lib.inZ',{z:o.libZone,name:(()=>{const p=S.players.find(x=>x.id===o.replaced);return p?('#'+p.number+' '+shortName(p)):'';})()}):t('lib.inNoMb')):t('lib.outBack'))+' '+t('lib.manual'));
   });
 }
 // O2: in modalità veloce la traiettoria è obbligatoria solo per battuta e attacco; la difesa usa solo un punto opzionale
@@ -2579,8 +2590,9 @@ $('#subBtn').onclick=()=>{
   $('#subOk').onclick=async()=>{
     if(!outId||!inId)return;
     const z0=+Object.keys(lu.lineup).find(k=>lu.lineup[k]===outId);if(!z0)return;
-    if(!lu.startLineup){lu.startLineup={...lu.lineup};lu.startSetterId=lu.setterId;} // formazione di partenza del set (per il set successivo / video)
+    if(!lu.startLineup){lu.startLineup={...lu.lineup};lu.startSetterId=lu.setterId;if(Array.isArray(lu.libFor))lu.startLibFor=[...lu.libFor];} // formazione di partenza del set (per il set successivo / video)
     lu.lineup[z0]=inId;if(lu.setterId===outId)lu.setterId=inId;
+    if(Array.isArray(lu.libFor)&&lu.libFor.includes(outId))lu.libFor=lu.libFor.map(x=>x===outId?inId:x); // il libero sostituisce chi entra
     const a={id:uid(),matchId:m.id,teamId:S.currentTeam.id,generic:true,side:'us',gtype:'sub',subOut:outId,subIn:inId,subZone:z0,
       setNum:m.curSet+1,rotation:curSetterZone(),phase:phaseNow(),mode:S.mode,videoTime:currentVideoTime(),ts:Date.now()};
     await put('matches',m);await put('actions',a);closeModal();
@@ -2597,7 +2609,8 @@ function lastMatchLineup(m){
   const l=prevM.sets[0].lu,lineup={...(l.startLineup||l.lineup||{})};
   for(const z in lineup)if(!ids.has(lineup[z]))lineup[z]=null; // giocatori tolti dalla rosa
   const keep=id=>id&&ids.has(id)?id:null;
-  return {lineup,setterId:keep(l.startSetterId||l.setterId),libero:keep(l.libero),libero2:keep(l.libero2),libSplit:l.libSplit,libAuto:l.libAuto};
+  const lf=l.startLibFor||l.libFor;
+  return {lineup,setterId:keep(l.startSetterId||l.setterId),libero:keep(l.libero),libero2:keep(l.libero2),libSplit:l.libSplit,libAuto:l.libAuto,libFor:Array.isArray(lf)?lf.filter(id=>ids.has(id)):undefined};
 }
 function lineupSheet(){
   const m=S.currentMatch;if(!m)return toast(t('match.none'));
@@ -2636,6 +2649,11 @@ function lineupSheet(){
     </div>
     <label id="luSplitRow" style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;min-height:44px">
       <input type="checkbox" id="luSplit" style="width:22px;height:22px" ${src.libSplit!==false?'checked':''}> ${t('lu.split')}</label>
+    <div id="luLibForWrap" style="margin-top:10px">
+      <label class="fld">${t('lu.libFor')}</label>
+      <div class="chips" id="luLibFor"></div>
+      <p id="luLibForHint" style="color:var(--mut2);font-size:12px;margin:6px 0 0">${t('lu.libForHint')}</p>
+    </div>
     <p style="color:var(--mut2);font-size:12px;margin:6px 0 0">${t('lu.libNote')}</p>
     <label class="fld" style="margin-top:12px">${started?t('lu.whoServedFirst'):t('lu.whoServesFirst')}</label>
     <div class="srvrad" role="radiogroup">
@@ -2666,9 +2684,24 @@ function lineupSheet(){
     const st=$('#luSetter').value,zs=st&&Object.keys(n).find(z=>n[z]===st);
     toast(zs?t('lu.setterIn',{z:zs}):t('lu.rotated'));
   };
-  $('#luRotFwd').onclick=()=>shiftLineup(1);$('#luRotBack').onclick=()=>shiftLineup(-1);
-  const splitVis=()=>{$('#luSplitRow').style.display=$('#luLibero').value&&$('#luLibero2').value?'flex':'none';};
+  $('#luRotFwd').onclick=()=>{shiftLineup(1);renderLibFor();};$('#luRotBack').onclick=()=>{shiftLineup(-1);renderLibFor();};
+  // chi sostituisce il libero: scelta salvata (filtrata sui 6 in formazione) oppure, di default, i centrali
+  const srcLibFor=(!set.lu&&src.startLibFor)||src.libFor;
+  let libFor=new Set(Array.isArray(srcLibFor)?srcLibFor:[]),libForTouched=Array.isArray(srcLibFor);
+  const renderLibFor=()=>{
+    const l=readLineup(),six=[4,3,2,5,6,1].map(z=>l[z]).filter(Boolean);
+    if(!libForTouched)libFor=new Set(six.filter(id=>isRole(byId(id),'centrale')));
+    libFor=new Set([...libFor].filter(id=>six.includes(id)));
+    const hasLib=!!($('#luLibero').value||$('#luLibero2').value);
+    $('#luLibForWrap').style.display=hasLib?'block':'none';
+    $('#luLibFor').innerHTML=six.map(id=>{const p=byId(id),on=libFor.has(id);
+      return `<button type="button" class="chip ${on?'on':''}" data-lf="${id}" aria-pressed="${on}">#${p.number} ${esc(shortName(p))} <small style="opacity:.7">${esc(roleLabel(p.role).slice(0,4))}</small></button>`;}).join('');
+    $('#luLibForHint').textContent=libFor.size?t('lu.libForHint'):t('lu.libForNone');
+    $$('#luLibFor [data-lf]').forEach(b=>b.onclick=()=>{libForTouched=true;const id=b.dataset.lf;libFor.has(id)?libFor.delete(id):libFor.add(id);renderLibFor();});
+  };
+  const splitVis=()=>{$('#luSplitRow').style.display=$('#luLibero').value&&$('#luLibero2').value?'flex':'none';renderLibFor();};
   $('#luLibero').onchange=splitVis;$('#luLibero2').onchange=splitVis;splitVis();
+  $$('[data-z]').forEach(x=>x.addEventListener('change',renderLibFor));
   $('#luSetter').onchange=()=>{setterTouched=!!$('#luSetter').value;};
   preview();
   $('#luSave').onclick=async()=>{
@@ -2688,7 +2721,8 @@ function lineupSheet(){
     const old=set.lu||(m.lineup&&!prev?m:{}); // partite legacy: eredita rotazione dalla formazione a livello partita
     const keepRot=started&&old.lineup;
     set.lu={lineup,setterId,setterZone,libero,libero2,
-      ...(keepRot&&old.startLineup?{startLineup:old.startLineup,startSetterId:old.startSetterId}:{}),
+      ...(keepRot&&old.startLineup?{startLineup:old.startLineup,startSetterId:old.startSetterId,...(old.startLibFor?{startLibFor:old.startLibFor}:{})}:{}),
+      libFor:[...libFor],
       rotStep:keepRot?(old.rotStep||0):0,
       libIn:[libero,libero2].includes(old.libIn)?old.libIn:null,
       libAuto:old.libAuto!==false,libSplit:!!(libero&&libero2&&$('#luSplit').checked)};
