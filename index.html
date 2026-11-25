@@ -1502,9 +1502,22 @@ async function loadAll(){
   S.teams=await getAll('teams');
   S.players=await getAll('players');
   S.matches=await getAll('matches');
+  await fixDecidedMatches();
   const meta=await getOne('meta','state')||{};
   S.currentTeam=S.teams.find(t=>t.id===meta.currentTeam)||S.teams[0]||null;
   S.currentMatch=S.matches.find(m=>m.id===meta.currentMatch)||null;
+}
+// Partite giocate prima della chiusura automatica: già decise (3 set vinti, o 2 nel meglio dei 3)
+// ma mai segnate come concluse, spesso con un set vuoto in più. Le segna concluse e torna
+// sull'ultimo set giocato. Non tocca quelle riaperte a mano (m.reopened) né i set fissi.
+async function fixDecidedMatches(){
+  for(const m of S.matches){
+    if(m.finished||m.reopened||!Array.isArray(m.sets)||matchFormat(m).type==='fixed')continue;
+    let last=-1;m.sets.forEach((x,i)=>{if((x.us||0)+(x.them||0)>0)last=i;});
+    if(last<0||!matchOverAfter(m,last))continue;
+    m.finished=true;m.curSet=last;
+    await put('matches',m);
+  }
 }
 async function saveState(){await put('meta',{k:'state',currentTeam:S.currentTeam?.id,currentMatch:S.currentMatch?.id});}
 
@@ -2380,7 +2393,7 @@ function checkSetEnd(){
   $('#endSetOk').onclick=()=>{closeModal(true);closeSet();};
 }
 async function finishMatch(m){
-  m.finished=true;await put('matches',m);
+  m.finished=true;m.reopened=false;await put('matches',m);
   renderScout();renderCtx();showMatchEnd(m);
 }
 function showMatchEnd(m){
@@ -2398,7 +2411,7 @@ function showMatchEnd(m){
   $('#endPdf').onclick=()=>{closeModal();sharePdf(m.id);};
 }
 async function reopenMatch(){
-  const m=S.currentMatch;if(!m)return;m.finished=false;await put('matches',m);
+  const m=S.currentMatch;if(!m)return;m.finished=false;m.reopened=true;await put('matches',m);
   const s=m.sets[m.curSet];_setEndKey=m.id+'|'+m.curSet+'|'+s.us+'-'+s.them; // non riproporre subito "chiudi set": si sta correggendo
   renderScout();toast(t('end.reopened'));
 }
