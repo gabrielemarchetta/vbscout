@@ -1243,6 +1243,14 @@ const I18N={
 'imp.q':["Ripristinare il backup?","Restore the backup?","Backup wiederherstellen?","¿Restaurar la copia?","Restaurer la sauvegarde ?"],
 'imp.msg':["I dati del file verranno uniti a quelli attuali (i record con lo stesso ID vengono sovrascritti).","The file data will be merged with the current data (records with the same ID are overwritten).","Die Daten der Datei werden mit den aktuellen zusammengeführt (Einträge mit gleicher ID werden überschrieben).","Los datos del archivo se unirán a los actuales (los registros con el mismo ID se sobrescriben).","Les données du fichier seront fusionnées avec les données actuelles (les enregistrements de même ID sont écrasés)."],
 'imp.ok':["Ripristina","Restore","Wiederherstellen","Restaurar","Restaurer"],
+'exp.btn':["📤 Esporta questa partita","📤 Export this match","📤 Dieses Spiel exportieren","📤 Exportar este partido","📤 Exporter ce match"],
+'exp.ready':["File della partita pronto","Match file ready","Spieldatei bereit","Archivo del partido listo","Fichier du match prêt"],
+'exp.hint':["Contiene solo questa partita, con squadra, giocatori e azioni. Chi lo riceve lo apre da Stat → Dati → «Ripristina da backup».","Contains only this match, with team, players and actions. The recipient opens it from Stats → Data → “Restore from backup”.","Enthält nur dieses Spiel mit Mannschaft, Spielern und Aktionen. Der Empfänger öffnet es unter Statistik → Daten → „Aus Backup wiederherstellen“.","Contiene solo este partido, con equipo, jugadores y acciones. Quien lo recibe lo abre en Estadísticas → Datos → «Restaurar copia».","Contient seulement ce match, avec équipe, joueurs et actions. Le destinataire l'ouvre dans Stats → Données → « Restaurer une sauvegarde »."],
+'exp.share':["📤 Condividi (WhatsApp, email…)","📤 Share (WhatsApp, email…)","📤 Teilen (WhatsApp, E-Mail…)","📤 Compartir (WhatsApp, email…)","📤 Partager (WhatsApp, e-mail…)"],
+'exp.download':["⬇ Scarica file","⬇ Download file","⬇ Datei herunterladen","⬇ Descargar archivo","⬇ Télécharger le fichier"],
+'imp.matchQ':["Importare la partita?","Import the match?","Spiel importieren?","¿Importar el partido?","Importer le match ?"],
+'imp.matchMsg':["vs {opp} · {date}. Verrà aggiunta con la sua squadra ({team}) e i suoi giocatori; i dati che hai già restano.","vs {opp} · {date}. It will be added with its team ({team}) and players; your existing data stays.","vs {opp} · {date}. Wird mit Mannschaft ({team}) und Spielern hinzugefügt; deine Daten bleiben.","vs {opp} · {date}. Se añadirá con su equipo ({team}) y jugadores; tus datos se mantienen.","vs {opp} · {date}. Il sera ajouté avec son équipe ({team}) et ses joueurs ; tes données restent."],
+'imp.matchDone':["Partita importata: vs {opp}","Match imported: vs {opp}","Spiel importiert: vs {opp}","Partido importado: vs {opp}","Match importé : vs {opp}"],
 'imp.done':["Backup ripristinato","Backup restored","Backup wiederhergestellt","Copia restaurada","Sauvegarde restaurée"],
 'imp.invalid':["File non valido","Invalid file","Ungültige Datei","Archivo no válido","Fichier non valide"],
 'csv.head':["data|avversario|set|rotazione|giocatore|numero|fondamentale|esito|alzata_dove|zona_partenza|zona_arrivo|modalità|videoTime","date|opponent|set|rotation|player|number|skill|outcome|set_destination|start_zone|end_zone|mode|videoTime","datum|gegner|satz|rotation|spieler|nummer|element|ergebnis|zuspiel_ziel|startzone|zielzone|modus|videoTime","fecha|rival|set|rotacion|jugador|numero|fundamento|resultado|colocacion_destino|zona_inicio|zona_final|modo|videoTime","date|adversaire|set|rotation|joueur|numero|geste|resultat|passe_destination|zone_depart|zone_arrivee|mode|videoTime"],
@@ -1997,6 +2005,7 @@ function matchSheet(m){
       <select class="inp" id="fmtN" style="width:90px">${[2,3,4,5].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
     <div id="fmtHint" style="font-size:12px;color:var(--mut2);margin-top:6px"></div>
     <button class="btn pri full" id="mSave" style="margin-top:16px">${ed?t('c.save'):t('match.createAct')}</button>
+    ${ed?`<button class="btn gho full" id="mExp" style="margin-top:8px">${t('exp.btn')}</button>`:''}
     ${ed?`<button class="btn gho full" id="mDup" style="margin-top:8px">${t('match.dup')}</button>`:''}
     ${ed?`<button class="btn danger gho full" id="mDel" style="margin-top:8px">${t('match.del')}</button>`:''}`);
   let ha=m?.homeAway||'home';
@@ -2019,6 +2028,7 @@ function matchSheet(m){
     await saveState();closeModal();renderMatchView();renderCtx();toast(t('match.saved'));
   };
   // nuova partita vuota con le stesse formazioni per set: lo scout da video non si somma a quello dal vivo
+  if(ed)$('#mExp').onclick=()=>exportMatch(m);
   if(ed)$('#mDup').onclick=async()=>{
     // demo: una sola copia video per partita, e niente copie di copie
     if(!LIC.unlocked&&(m.sourceMatch||S.matches.some(x=>x.sourceMatch===m.id)))return limitSheet(t('lic.oneCopy'));
@@ -3986,16 +3996,41 @@ $('#importFile').onchange=e=>{
         const mids=new Set([...S.matches.filter(m=>!m.sourceMatch).map(m=>m.id),...(d.matches||[]).filter(m=>!m.sourceMatch).map(m=>m.id)]);
         if(ids.size>DEMO_MAX_TEAMS||mids.size>DEMO_MAX_MATCHES){e.target.value='';return limitSheet(t('lic.backupLimit'));}
       }
-      if(!await confirmSheet(t('imp.q'),t('imp.msg'),t('imp.ok'),false))return;
+      const one=d.kind==='match'&&Array.isArray(d.matches)&&d.matches.length===1?d.matches[0]:null;
+      const oneTeam=one&&(d.teams||[]).find(x=>x&&x.id===one.teamId);
+      if(!await confirmSheet(one?t('imp.matchQ'):t('imp.q'),
+        one?t('imp.matchMsg',{opp:String(one.opponent||''),date:fmtMatchDate(one.date),team:String(oneTeam?.name||'')}):t('imp.msg'),t('imp.ok'),false))return;
       for(const t of d.teams||[])if(t&&t.id)await put('teams',t);
       for(const p of d.players||[]){if(!p||!p.id)continue;p.number=parseInt(p.number)||0;await put('players',p);} // numero sempre numerico (niente HTML da file esterni)
       for(const m of d.matches||[]){if(!m||!m.id)continue;if(m.format)m.format=matchFormat(m);m.finished=!!m.finished;await put('matches',m);}
       for(const a of d.actions||[]){const c=cleanImportedAction(a);if(c)await put('actions',c);}
-      await loadAll();await loadLic();renderMatchView();renderCtx();toast(t('imp.done'));
+      await loadAll();await loadLic();
+      if(one){ // partita singola: la apre subito, con la sua squadra
+        S.currentTeam=S.teams.find(x=>x.id===one.teamId)||S.currentTeam;S.currentMatch=S.matches.find(x=>x.id===one.id)||S.currentMatch;
+        await saveState();show('match');toast(t('imp.matchDone',{opp:one.opponent||''}));
+      }else{renderMatchView();renderCtx();toast(t('imp.done'));}
     }catch(_){toast(t('imp.invalid'));}
   };
   rd.readAsText(f);
 };
+async function exportMatch(m){
+  const team=S.teams.find(x=>x.id===m.teamId);
+  const data={app:'vbscout',version:1,kind:'match',exportedAt:new Date().toISOString(),
+    teams:team?[team]:[],players:S.players.filter(p=>p.teamId===m.teamId),matches:[m],
+    actions:await getByIndex('actions','match',m.id)};
+  const name=('vbscout-partita-'+[team?.name||'',('vs '+m.opponent),m.date||''].join('_')).replace(/[\\/:*?"<>|]+/g,'_').replace(/\s+/g,'-')+'.json';
+  const json=JSON.stringify(data,null,2);
+  const file=new File([json],name,{type:'application/json'});
+  const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+  // la condivisione richiede un tocco diretto: per questo un riquadro con i pulsanti
+  modal(`<h2 style="margin:0 0 6px;font-size:22px">📤 ${t('exp.ready')}</h2>
+    <p style="color:var(--mut);margin:0 0 6px;font-size:13px;word-break:break-all">${esc(name)} · ${Math.max(1,Math.round(json.length/1024))} KB</p>
+    <p style="color:var(--mut2);margin:0 0 14px;font-size:12px;line-height:1.4">${t('exp.hint')}</p>
+    ${canShare?`<button class="btn pri full" id="expShare">${t('exp.share')}</button>`:''}
+    <button class="btn ${canShare?'gho':'pri'} full" id="expSave" style="margin-top:8px">${t('exp.download')}</button>`);
+  if(canShare)$('#expShare').onclick=async()=>{try{await navigator.share({files:[file],title:name.replace(/\.json$/,'')});closeModal();}catch(err){if(err&&err.name!=='AbortError')toast(t('pdf.shareFail'));}};
+  $('#expSave').onclick=()=>{download(json,name,'application/json');closeModal();};
+}
 function download(content,name,type){
   const b=new Blob([content],{type});const u=URL.createObjectURL(b);
   const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);
