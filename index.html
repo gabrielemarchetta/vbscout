@@ -717,6 +717,9 @@ const I18N={
 'lic.devHint':["Per un codice personale valido solo su questo dispositivo, manda questo ID.","For a personal code valid only on this device, send this ID.","Für einen persönlichen Code nur für dieses Gerät sende diese ID.","Para un código personal válido solo en este dispositivo, envía este ID.","Pour un code personnel valable uniquement sur cet appareil, envoie cet ID."],
 'lic.copy':["Copia","Copy","Kopieren","Copiar","Copier"],
 'lic.copied':["ID copiato","ID copied","ID kopiert","ID copiado","ID copié"],
+'paid.title':["✅ Pagamento ricevuto, grazie!","✅ Payment received, thank you!","✅ Zahlung erhalten, danke!","✅ ¡Pago recibido, gracias!","✅ Paiement reçu, merci !"],
+'paid.msg':["Attiverò la tua licenza entro 24 ore e riceverai la ricevuta per email. Quando è attiva, l'app si sblocca da sola: puoi anche toccare il tuo account → «Verifica licenza».","I'll activate your licence within 24 hours and you'll get the receipt by email. Once active, the app unlocks by itself: you can also tap your account → “Check licence”.","Ich aktiviere deine Lizenz innerhalb von 24 Stunden, die Quittung kommt per E-Mail. Danach schaltet sich die App selbst frei: oder Konto → „Lizenz prüfen“.","Activaré tu licencia en 24 horas y recibirás el recibo por email. Cuando esté activa, la app se desbloquea sola: también puedes tocar tu cuenta → «Verificar licencia».","J'active ta licence sous 24 heures et tu recevras le reçu par e-mail. Une fois active, l'app se débloque toute seule : tu peux aussi toucher ton compte → « Vérifier la licence »."],
+'paid.otherApp':["Se usi VBScout installato nella schermata Home, chiudi questa pagina e torna nell'app.","If you use VBScout installed on your home screen, close this page and go back to the app.","Wenn du VBScout auf dem Startbildschirm installiert hast, schließe diese Seite und kehre zur App zurück.","Si usas VBScout instalada en la pantalla de inicio, cierra esta página y vuelve a la app.","Si tu utilises VBScout installé sur l'écran d'accueil, ferme cette page et retourne dans l'app."],
 'buy.btn':["🛒 Acquista la versione completa · {price}","🛒 Buy the full version · {price}","🛒 Vollversion kaufen · {price}","🛒 Comprar la versión completa · {price}","🛒 Acheter la version complète · {price}"],
 'buy.title':["Versione completa","Full version","Vollversion","Versión completa","Version complète"],
 'buy.what':["Pass stagione: tutte le funzioni, squadre e partite senza limiti fino al {d}, su un dispositivo.","Season pass: all features, unlimited teams and matches until {d}, on one device.","Saisonpass: alle Funktionen, unbegrenzt Mannschaften und Spiele bis {d}, auf einem Gerät.","Pase de temporada: todas las funciones, equipos y partidos sin límite hasta el {d}, en un dispositivo.","Pass saison : toutes les fonctions, équipes et matchs illimités jusqu'au {d}, sur un appareil."],
@@ -4160,6 +4163,19 @@ applyI18n(document);
   renderMatchView();
   fixNavPad();
   if(navigator.onLine!==false)refreshAcctLicense(false); // verifica licenza in background (mai bloccante)
+  // ritorno da Stripe dopo il pagamento (Payment Link → reindirizza a …/?pagato=1)
+  try{
+    const qs=new URLSearchParams(location.search);
+    if(qs.get('pagato')==='1'){
+      history.replaceState(null,'',location.pathname+location.hash); // toglie il parametro: niente messaggio ripetuto
+      modal(`<h2 style="margin:0 0 8px;font-size:22px">${t('paid.title')}</h2>
+        <p style="color:var(--mut);margin:0 0 10px;font-size:14px;line-height:1.45">${t('paid.msg')}</p>
+        <p style="color:var(--mut2);margin:0 0 16px;font-size:12px;line-height:1.4">${t('paid.otherApp')}</p>
+        <button class="btn pri full" id="paidOk">${t('c.close')}</button>`);
+      $('#paidOk').onclick=()=>closeModal();
+      if(ACCT)refreshAcctLicense(true);
+    }
+  }catch(_){}
 })();
 </script>
 </body>
