@@ -679,7 +679,7 @@ const I18N={
 'acc.haveAcc':["Hai già un account? Accedi","Already have an account? Sign in","Schon ein Konto? Anmelden","¿Ya tienes cuenta? Inicia sesión","Déjà un compte ? Connecte-toi"],
 'acc.privacy':["Usiamo la tua email solo per l'accesso e la licenza. Squadre, giocatori e partite restano solo su questo dispositivo.","We use your email only for sign-in and the licence. Teams, players and matches stay only on this device.","Deine E-Mail dient nur zur Anmeldung und Lizenz. Mannschaften, Spieler und Spiele bleiben nur auf diesem Gerät.","Usamos tu email solo para el acceso y la licencia. Equipos, jugadores y partidos se quedan solo en este dispositivo.","Ton e-mail sert uniquement à la connexion et à la licence. Équipes, joueurs et matchs restent sur cet appareil."],
 'acc.privacyLink':["Informativa privacy","Privacy notice","Datenschutzhinweis","Aviso de privacidad","Avis de confidentialité"],
-'acc.privacyText':["Titolare: lo sviluppatore di VBScout (contatto: Instagram @joel86volley). Dati raccolti: email e password, gestite da Google Firebase con server in Europa; la password non è mai visibile allo sviluppatore. Finalità: accesso all'app e verifica della licenza. Conservazione: finché l'account esiste; puoi chiederne la cancellazione in qualsiasi momento tramite il contatto indicato. I dati di squadre, giocatori, partite e statistiche non vengono mai inviati a nessun server.","Controller: the VBScout developer (contact: Instagram @joel86volley). Data collected: email and password, handled by Google Firebase on European servers; the password is never visible to the developer. Purpose: access to the app and licence check. Retention: as long as the account exists; you can ask for deletion at any time via the contact above. Team, player, match and statistics data are never sent to any server.","Verantwortlich: der Entwickler von VBScout (Kontakt: Instagram @joel86volley). Erhobene Daten: E-Mail und Passwort, verwaltet von Google Firebase auf europäischen Servern; das Passwort ist für den Entwickler nie sichtbar. Zweck: Zugang zur App und Lizenzprüfung. Speicherdauer: solange das Konto besteht; Löschung jederzeit über den Kontakt oben möglich. Mannschafts-, Spieler-, Spiel- und Statistikdaten werden nie an einen Server gesendet.","Responsable: el desarrollador de VBScout (contacto: Instagram @joel86volley). Datos recogidos: email y contraseña, gestionados por Google Firebase con servidores en Europa; la contraseña nunca es visible para el desarrollador. Finalidad: acceso a la app y verificación de la licencia. Conservación: mientras exista la cuenta; puedes pedir su eliminación en cualquier momento mediante el contacto indicado. Los datos de equipos, jugadores, partidos y estadísticas nunca se envían a ningún servidor.","Responsable : le développeur de VBScout (contact : Instagram @joel86volley). Données collectées : e-mail et mot de passe, gérés par Google Firebase sur des serveurs européens ; le mot de passe n'est jamais visible par le développeur. Finalité : accès à l'app et vérification de la licence. Conservation : tant que le compte existe ; tu peux demander la suppression à tout moment via le contact indiqué. Les données d'équipes, joueurs, matchs et statistiques ne sont jamais envoyées à un serveur."],
+'acc.privacyText':["Titolare: lo sviluppatore di VBScout (contatto: vbscout.coach@gmail.com · Instagram @joel86volley). Dati raccolti: email e password, gestite da Google Firebase con server in Europa; la password non è mai visibile allo sviluppatore. Finalità: accesso all'app e verifica della licenza. Conservazione: finché l'account esiste; puoi chiederne la cancellazione in qualsiasi momento tramite il contatto indicato. I dati di squadre, giocatori, partite e statistiche non vengono mai inviati a nessun server.","Controller: the VBScout developer (contact: vbscout.coach@gmail.com · Instagram @joel86volley). Data collected: email and password, handled by Google Firebase on European servers; the password is never visible to the developer. Purpose: access to the app and licence check. Retention: as long as the account exists; you can ask for deletion at any time via the contact above. Team, player, match and statistics data are never sent to any server.","Verantwortlich: der Entwickler von VBScout (Kontakt: vbscout.coach@gmail.com · Instagram @joel86volley). Erhobene Daten: E-Mail und Passwort, verwaltet von Google Firebase auf europäischen Servern; das Passwort ist für den Entwickler nie sichtbar. Zweck: Zugang zur App und Lizenzprüfung. Speicherdauer: solange das Konto besteht; Löschung jederzeit über den Kontakt oben möglich. Mannschafts-, Spieler-, Spiel- und Statistikdaten werden nie an einen Server gesendet.","Responsable: el desarrollador de VBScout (contacto: vbscout.coach@gmail.com · Instagram @joel86volley). Datos recogidos: email y contraseña, gestionados por Google Firebase con servidores en Europa; la contraseña nunca es visible para el desarrollador. Finalidad: acceso a la app y verificación de la licencia. Conservación: mientras exista la cuenta; puedes pedir su eliminación en cualquier momento mediante el contacto indicado. Los datos de equipos, jugadores, partidos y estadísticas nunca se envían a ningún servidor.","Responsable : le développeur de VBScout (contact : vbscout.coach@gmail.com · Instagram @joel86volley). Données collectées : e-mail et mot de passe, gérés par Google Firebase sur des serveurs européens ; le mot de passe n'est jamais visible par le développeur. Finalité : accès à l'app et vérification de la licence. Conservation : tant que le compte existe ; tu peux demander la suppression à tout moment via le contact indiqué. Les données d'équipes, joueurs, matchs et statistiques ne sont jamais envoyées à un serveur."],
 'acc.created':["Per attivare la versione completa acquista il pass stagione qui sotto, oppure contattami.","To activate the full version, buy the season pass below or contact me.","Um die Vollversion zu aktivieren, kaufe unten den Saisonpass oder kontaktiere mich.","Para activar la versión completa, compra el pase de temporada abajo o contáctame.","Pour activer la version complète, achète le pass saison ci-dessous ou contacte-moi."],
 'acc.signedIn':["Accesso effettuato","Signed in","Angemeldet","Sesión iniciada","Connecté"],
 'acc.noLic':["Nessuna licenza attiva per questo account. Contattami per attivarla.","No active licence for this account. Contact me to activate it.","Keine aktive Lizenz für dieses Konto. Kontaktiere mich zur Aktivierung.","Ninguna licencia activa para esta cuenta. Contáctame para activarla.","Aucune licence active pour ce compte. Contacte-moi pour l'activer."],
@@ -1556,9 +1556,11 @@ async function saveState(){await put('meta',{k:'state',currentTeam:S.currentTeam
 // =========================================================
 const DEMO_MAX_TEAMS=1, DEMO_MAX_MATCHES=2;
 const CONTACT_URL='https://instagram.com/joel86volley';
+const CONTACT_EMAIL='vbscout.coach@gmail.com';
+const mailBtn=(mt='8px')=>`<a class="btn gho full" href="mailto:${CONTACT_EMAIL}?subject=VBScout" style="margin-top:${mt};text-align:center;text-decoration:none">✉️ ${CONTACT_EMAIL}</a>`;
 // Acquisto: Payment Link di Stripe (pubblico). ⚠️ Link di TEST (sandbox): sostituirlo con quello live prima di vendere.
 const BUY_URL='https://buy.stripe.com/test_28EeVceq8d6q3cteio57W00';
-const BUY_PRICE='14,90 €', BUY_UNTIL=new Date(2027,5,30); // pass stagione: valido fino al 30 giugno
+const BUY_PRICE='18,90 €', BUY_UNTIL=new Date(2027,5,30); // pass stagione: valido fino al 30 giugno
 const UNLOCK_HASHES=[
   '87c63ba23eb9caa1b18d281e0d8d1f92da7f2bf34505fbb3372f99dfb583396a', // codice 1
   '690444d4e5e3b64034c1ed77116f2cf7c11b470162052a85dd5704fb8f547935', // codice 2
@@ -1793,7 +1795,7 @@ function accountInfoSheet(){
     <p style="margin:0 0 6px;font-size:14px;color:${ok?'var(--good)':'var(--mut)'}">${esc(acctStatusText())}</p>
     ${ACCT.checkedAt?`<p style="margin:0 0 14px;font-size:12px;color:var(--mut2)">${t('acc.lastCheck',{d:fmtDay(ACCT.checkedAt)})}</p>`:''}
     ${ok||(ACCT.lic&&!(ACCT.lic.exp&&ACCT.lic.exp<Date.now()))?'':`<p style="margin:0 0 14px;font-size:13px;color:var(--mut)">${t('acc.created')}</p>
-      <button class="btn pri full" id="accBuy" style="margin-bottom:8px">${t('buy.btn',{price:BUY_PRICE})}</button>`}
+      <button class="btn pri full" id="accBuy" style="margin-bottom:8px">${t('buy.btn',{price:BUY_PRICE})}</button>${mailBtn('0')}<div style="height:8px"></div>`}
     ${devBlockHtml()}
     <button class="btn ${otherDev()?'gho':'pri'} full" id="accCheck">${t('acc.check')}</button>
     <button class="btn gho full" id="accOut" style="margin-top:8px">${t('acc.logout')}</button>
@@ -1836,6 +1838,7 @@ function buySheet(){
       <p style="color:var(--mut2);font-size:12px;margin:8px 2px 0">${t('buy.note')}</p>`
       :`<button class="btn pri full" id="buyAcc" style="margin-top:6px">${t('buy.createAcc')}</button>`}
     <a class="btn gho full" href="${CONTACT_URL}" target="_blank" rel="noopener" style="margin-top:8px;text-align:center;text-decoration:none">${t('lic.contact')}</a>
+    ${mailBtn()}
     <button class="btn gho full" id="buyClose" style="margin-top:8px">${t('c.close')}</button>`);
   $('#buyClose').onclick=()=>closeModal();
   const ba=$('#buyAcc');if(ba)ba.onclick=()=>accountSheet('signup');
@@ -1865,6 +1868,7 @@ function limitSheet(why){
     <button class="btn gho full" id="unlockOk" style="margin-top:12px">${t('lic.unlock')}</button>
     <button class="btn gho full" id="unlockAcc" style="margin-top:8px">${ACCT?'👤 '+esc(ACCT.email):t('acc.loginBtn')}</button>
     <a class="btn gho full" href="${CONTACT_URL}" target="_blank" rel="noopener" style="margin-top:8px;text-align:center;text-decoration:none">${t('lic.contact')}</a>
+    ${mailBtn()}
     <button class="btn gho full" id="unlockNo" style="margin-top:8px">${t('c.close')}</button>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);text-align:center">
       <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);font-weight:700">${t('lic.devId')}</div>
@@ -4171,7 +4175,7 @@ applyI18n(document);
       modal(`<h2 style="margin:0 0 8px;font-size:22px">${t('paid.title')}</h2>
         <p style="color:var(--mut);margin:0 0 10px;font-size:14px;line-height:1.45">${t('paid.msg')}</p>
         <p style="color:var(--mut2);margin:0 0 16px;font-size:12px;line-height:1.4">${t('paid.otherApp')}</p>
-        <button class="btn pri full" id="paidOk">${t('c.close')}</button>`);
+        <button class="btn pri full" id="paidOk">${t('c.close')}</button>${mailBtn()}`);
       $('#paidOk').onclick=()=>closeModal();
       if(ACCT)refreshAcctLicense(true);
     }
