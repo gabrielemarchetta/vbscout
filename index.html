@@ -3446,8 +3446,26 @@ function setBreakdown(matches,acts,pid){
   }
   return rows;
 }
+// "Tutte le partite": una partita e le sue copie per lo scout da video contano UNA volta sola.
+// Si usa la copia video più recente che ha azioni (è la più completa); se non ne ha, l'originale.
+async function seasonData(teamId){
+  const ms=S.matches.filter(m=>m.teamId===teamId),byId=new Map(ms.map(m=>[m.id,m]));
+  const root=m=>{let r=m,n=0;while(r.sourceMatch&&byId.has(r.sourceMatch)&&n++<20)r=byId.get(r.sourceMatch);return r.id;};
+  const groups=new Map();
+  for(const m of ms){const k=root(m);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(m);}
+  const matches=[];let acts=[];
+  for(const g of groups.values()){
+    const withActs=[];
+    for(const m of g)withActs.push({m,a:await getByIndex('actions','match',m.id)});
+    const copies=withActs.filter(x=>x.m.sourceMatch&&x.a.length).sort((x,y)=>y.m.createdAt-x.m.createdAt);
+    const pick=copies[0]||withActs.find(x=>!x.m.sourceMatch)||withActs.sort((x,y)=>y.a.length-x.a.length)[0];
+    matches.push(pick.m);acts=acts.concat(pick.a);
+  }
+  return {matches,acts};
+}
 async function loadStatData(matchId){
-  const matches=matchId==='all'?S.matches.filter(m=>m.teamId===S.currentTeam.id):S.matches.filter(m=>m.id===matchId);
+  if(matchId==='all')return seasonData(S.currentTeam.id);
+  const matches=S.matches.filter(m=>m.id===matchId);
   let acts=[];for(const m of matches)acts=acts.concat(await getByIndex('actions','match',m.id));
   return {matches,acts};
 }
@@ -3830,7 +3848,7 @@ async function renderMap(){
   $$('#mapFundChips .chip').forEach(c=>c.onclick=()=>{mapFund=c.dataset.mf;renderMap();});
   // dati
   let acts=[];
-  if(mSel.value==='all'){for(const m of ms)acts=acts.concat(await getByIndex('actions','match',m.id));}
+  if(mSel.value==='all')acts=(await seasonData(S.currentTeam.id)).acts; // ogni partita una volta sola (copia video al posto dell'originale)
   else acts=await getByIndex('actions','match',mSel.value);
   cacheActions(acts);
   let skill=acts.filter(a=>!a.generic&&a.from&&a.to);
@@ -4179,6 +4197,7 @@ const GUIDE=[
 <h4>1 · Prepara la partita</h4>
 <ul><li><b>Partita già scoutata dal vivo?</b> Apri la partita (Partita → tocca la partita → Modifica) e scegli <b>📹 Duplica per scout da video</b>. Nasce una copia "(video)" con le stesse formazioni, vuota, pronta da scoutare.</li>
 <li><b>Partita non scoutata?</b> Crea la partita normalmente e scoutala direttamente in modalità VIDEO.</li></ul>
+<p>In Stat, con <b>"Tutte le partite"</b>, ogni partita conta una volta sola: se ha la copia video (con azioni) vale la copia, che è più completa, e l'originale dal vivo non viene sommato.</p>
 <h4>2 · Carica il video</h4>
 <p>In Scout tocca <b>▶ VIDEO</b>, poi scegli la sorgente:</p>
 <ul><li><b>📁 File locale</b>: il video registrato sul telefono o tablet. Funziona <b>anche offline</b> e il file non viene caricato da nessuna parte. Se chiudi l'app, al rientro devi <b>ricaricare il file</b> (le azioni già fatte restano).</li>
