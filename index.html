@@ -1557,9 +1557,9 @@ async function saveState(){await put('meta',{k:'state',currentTeam:S.currentTeam
 const DEMO_MAX_TEAMS=1, DEMO_MAX_MATCHES=2;
 const CONTACT_URL='https://instagram.com/joel86volley';
 const CONTACT_EMAIL='vbscout.coach@gmail.com';
-const mailBtn=(mt='8px')=>`<a class="btn gho full" href="mailto:${CONTACT_EMAIL}?subject=VBScout" style="margin-top:${mt};text-align:center;text-decoration:none">✉️ ${CONTACT_EMAIL}</a>`;
-// Acquisto: Payment Link di Stripe (pubblico). ⚠️ Link di TEST (sandbox): sostituirlo con quello live prima di vendere.
-const BUY_URL='https://buy.stripe.com/test_28EeVceq8d6q3cteio57W00';
+const mailBtn=(mt='8px')=>`<a class="btn gho full" href="mailto:${CONTACT_EMAIL}?subject=VBScout" style="margin-top:${mt};text-align:center;text-decoration:none">📧 ${CONTACT_EMAIL}</a>`;
+// Acquisto: Payment Link di Stripe LIVE (pubblico: nessun segreto). Per le prove usare il link della sandbox.
+const BUY_URL='https://buy.stripe.com/9B67sK3HY9sg9WvbK91Jm00';
 const BUY_PRICE='14,90 €', BUY_UNTIL=new Date(2027,5,30); // pass stagione: valido fino al 30 giugno
 const UNLOCK_HASHES=[
   '87c63ba23eb9caa1b18d281e0d8d1f92da7f2bf34505fbb3372f99dfb583396a', // codice 1
