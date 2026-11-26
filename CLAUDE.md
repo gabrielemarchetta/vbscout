@@ -12,6 +12,7 @@
 - PWA offline: manifest.json + service worker. L'app deve funzionare completamente senza rete dopo il primo caricamento.
 - Dati di squadre, giocatori, partite e statistiche salvati solo in locale (IndexedDB): non vanno mai mandati su un server.
 - Unico backend ammesso: **Firebase** (Authentication email/password + Firestore), solo per login e licenze. Vedi la sezione "Login e licenze".
+- Unica eccezione a "niente npm": la cartella `functions/` (Cloud Function del webhook Stripe, Node + firebase-admin). Riguarda solo il server: l'app resta vanilla e senza build.
 - Ad ogni modifica dell'app incrementa `CACHE_VERSION` in `sw.js` (es. `vbscout-v21` → `vbscout-v22`). Se aggiungi un file, inseriscilo anche in `APP_SHELL`.
 
 ## Struttura
@@ -45,10 +46,12 @@
 ## Login e licenze (Firebase)
 - La demo resta utilizzabile **senza account** (1 squadra, 2 partite). Il login serve solo a sbloccare la versione completa.
 - Accesso con email e password tramite Firebase Authentication: niente password salvate o gestite dall'app, niente login fatto in casa.
-- Licenze in Firestore, collezione `licenze`, un documento per utente (id = UID) con piano e scadenza. Ogni utente può solo leggere la propria; le scrive solo l'amministratore (pannello Firebase) o, in futuro, il sistema di pagamento.
+- Licenze in Firestore, collezione `licenze`, un documento per utente (id = UID) con piano e scadenza. Ogni utente può solo leggere la propria; le scrive solo l'amministratore (pannello Firebase) o la Cloud Function `stripeWebhook` (cartella `functions/`, regione europe-west1), che attiva la licenza dopo un pagamento Stripe e la chiude dopo un rimborso totale.
 - Server Firebase in Europa. Le regole di sicurezza di Firestore stanno nel repo (`firestore.rules`) e vanno tenute allineate al pannello.
 - Offline: l'ultima verifica della licenza vale 14 giorni, poi serve rete. L'app non deve mai bloccarsi in palestra per mancanza di connessione.
 - La configurazione web di Firebase (apiKey, authDomain, projectId) è pubblica per natura e può stare in `index.html`. Chiavi private, account di servizio e segreti non vanno mai nel repo.
+- Pagamenti: Payment Link di Stripe (Managed Payments). Il segreto del webhook (`whsec_...`) sta nel Secret Manager di Google (`STRIPE_WEBHOOK_SECRET`), mai nel repo né in chat. Le collezioni `pagamenti` e `pagamenti_da_abbinare` le scrive solo la funzione: per i client restano chiuse.
+- La funzione la pubblica l'utente da Cloud Shell (istruzioni in `functions/README.md`). Dopo ogni modifica a `functions/` eseguire `node functions/test.js`.
 - I codici di sblocco attuali (UNLOCK_HASHES, DEVICE_HASHES) restano validi fino a quando decido di toglierli.
 - Raccogliere email richiede un'informativa privacy: aggiornarla se cambia cosa si raccoglie.
 
