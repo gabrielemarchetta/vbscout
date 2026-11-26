@@ -78,14 +78,7 @@ input,select,textarea{font-family:inherit}
   backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
 }
 .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;font-family:'Saira Condensed';letter-spacing:1px;text-transform:uppercase}
-.logo .ball{
-  width:30px;height:30px;border-radius:50%;
-  background:conic-gradient(from 220deg,var(--acc),var(--acc2),var(--acc));
-  box-shadow:0 0 0 2px rgba(255,255,255,.06),0 6px 18px rgba(255,106,43,.4);
-  position:relative;flex:none;
-}
-.logo .ball::before,.logo .ball::after{content:"";position:absolute;inset:4px;border-radius:50%;border:1.5px solid rgba(12,14,18,.55)}
-.logo .ball::after{transform:rotate(60deg);border-style:dashed}
+.logo .ball{width:34px;height:34px;border-radius:50%;flex:none;display:block;box-shadow:0 6px 18px rgba(255,106,43,.35)}
 .logo small{color:var(--mut);font-family:'Manrope';font-size:10px;letter-spacing:2px;display:block;margin-top:-4px}
 .top .ctx{margin-left:auto;text-align:right;font-size:12px;color:var(--mut);line-height:1.3;min-width:0}
 .top .ctx b{color:var(--txt);font-size:13px}
@@ -309,7 +302,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 <body>
 
 <div class="top">
-  <div class="logo"><span class="ball"></span><div>VBScout<small>SCOUTING PRO</small></div></div>
+  <div class="logo"><img class="ball" src="logo.png" alt="" width="34" height="34"><div>VBScout<small>SCOUTING PRO</small></div></div>
   <div class="ctx" id="ctxBox"><b id="ctxTeam">—</b><div id="ctxMatch" data-i18n="ctx.noMatch">nessuna partita</div></div>
   <button class="iconbtn setbtn" id="settingsBtn" type="button" data-i18n-aria="set.title" data-i18n-title="set.title" aria-label="Impostazioni" title="Impostazioni">⚙️</button>
 </div>

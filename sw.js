@@ -9,11 +9,12 @@
    - Tutti i percorsi sono RELATIVI: funziona in qualunque cartella del repo.
 */
 
-const CACHE_VERSION = 'vbscout-v34';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
+const CACHE_VERSION = 'vbscout-v36';     // <-- incrementa (v2, v3...) ad ogni aggiornamento
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './logo.png',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-512.png',
