@@ -283,6 +283,20 @@ video{width:100%;border-radius:14px;background:#000;display:block}
 
 /* ---------- modal ---------- */
 .modal{position:fixed;inset:0;z-index:90;background:rgba(6,8,11,.7);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;padding:0}
+.linkbtn{background:none;border:none;color:var(--acc);font-weight:700;font-size:14px;padding:10px 0;min-height:44px;cursor:pointer;text-align:left;font-family:inherit}
+.gd{border:1px solid var(--line);border-radius:14px;margin:0 0 8px;background:var(--card2,transparent)}
+.gd>summary{list-style:none;cursor:pointer;min-height:48px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px}
+.gd>summary::-webkit-details-marker{display:none}
+.gd>summary::after{content:"▾";margin-left:auto;color:var(--mut);transition:transform .2s}
+.gd[open]>summary::after{transform:rotate(180deg)}
+.gd[open]>summary{border-bottom:1px solid var(--line)}
+.gd .gdb{padding:6px 14px 14px;font-size:14.5px;line-height:1.5}
+.gd .gdb h4{margin:14px 0 4px;font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--acc)}
+.gd .gdb p{margin:6px 0}
+.gd .gdb ul,.gd .gdb ol{margin:6px 0;padding-left:20px}
+.gd .gdb li{margin:4px 0}
+.gd .gdb .tip{border-left:3px solid var(--acc);padding:6px 10px;margin:10px 0;background:rgba(255,106,43,.08);border-radius:0 8px 8px 0}
+.gd .gdb b{font-weight:800}
 .sheet{max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;width:100%;max-width:760px;background:var(--card);border:1px solid var(--line);border-bottom:none;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:up .25s ease}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 .grab{width:40px;height:4px;border-radius:3px;background:var(--line2);margin:0 auto 16px}
@@ -395,6 +409,7 @@ video{width:100%;border-radius:14px;background:#000;display:block}
         </div>
         <button class="chip sm" id="splitBtn" aria-pressed="false" aria-label="Affianca video e scout" title="Affianca video e scout">⧉ Affianca</button>
       </div>
+      <button class="linkbtn" data-guide="video" data-i18n="gd.video" style="margin-top:8px">❓ Come funziona lo scout da video</button>
 
       <div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0">
         <button class="chip sm" id="spdBtn" data-i18n-aria="vid.speed" aria-label="Velocità video">⏩ 1×</button>
@@ -657,6 +672,11 @@ const I18N={
 'set.theme.dark':["Scuro","Dark","Dunkel","Oscuro","Sombre"],
 'set.theme.light':["Chiaro","Light","Hell","Claro","Clair"],
 'set.themeNote':["Auto segue l'impostazione del telefono. Chiaro si legge meglio con luce forte.","Auto follows your phone setting. Light is easier to read in bright light.","Auto folgt der Einstellung des Handys. Hell ist bei starkem Licht besser lesbar.","Auto sigue el ajuste del teléfono. Claro se lee mejor con luz intensa.","Auto suit le réglage du téléphone. Clair se lit mieux en pleine lumière."],
+'gd.btn':["❓ Guida all'uso","❓ User guide","❓ Anleitung","❓ Guía de uso","❓ Guide d'utilisation"],
+'gd.title':["Guida all'uso","User guide","Anleitung","Guía de uso","Guide d'utilisation"],
+'gd.video':["❓ Come funziona lo scout da video","❓ How video scouting works","❓ So funktioniert Video-Scouting","❓ Cómo funciona el scouting por vídeo","❓ Comment fonctionne le scouting vidéo"],
+'gd.itOnly':["","The guide is currently available in Italian only.","Die Anleitung ist derzeit nur auf Italienisch verfügbar.","Por ahora la guía solo está disponible en italiano.","Pour l'instant, le guide n'est disponible qu'en italien."],
+'gd.intro':["Tocca un capitolo per aprirlo.","Tap a chapter to open it.","Tippe auf ein Kapitel, um es zu öffnen.","Toca un capítulo para abrirlo.","Touche un chapitre pour l'ouvrir."],
 'set.lang':["Lingua","Language","Sprache","Idioma","Langue"],
 // --- demo / sblocco ---
 'acc.title':["Account","Account","Konto","Cuenta","Compte"],
@@ -1933,7 +1953,8 @@ function guideStep(n,title,desc,btn,id){
   return `<div class="row" style="gap:6px;margin-bottom:12px">${dots}</div>
     <div class="disp" style="font-size:22px;font-weight:800">${title}</div>
     <p style="color:var(--mut);font-size:14px;line-height:1.4;margin:6px 0 14px">${desc}</p>
-    <button class="btn pri full" id="${id}">${btn}</button>`;
+    <button class="btn pri full" id="${id}">${btn}</button>
+    <button class="btn gho full" data-guide="${n==='1'?'start':n==='2'?'lineup':'start'}" style="margin-top:8px">${t('gd.btn')}</button>`;
 }
 // promemoria backup: se ci sono partite giocate e l'ultimo backup è assente o più vecchio di 7 giorni
 function renderBackupBanner(){
@@ -4117,9 +4138,134 @@ if('serviceWorker' in navigator){
 // =========================================================
 //  IMPOSTAZIONI (⚙️ nella barra in alto): tema + lingua
 // =========================================================
+// =========================================================
+//  GUIDA ALL'USO (contenuto in italiano)
+// =========================================================
+const GUIDE=[
+{id:'start',ic:'🚀',t:'Primi passi',h:`
+<p>VBScout funziona nel browser e <b>anche senza connessione</b>, dopo la prima apertura. I dati restano solo sul tuo telefono: niente viene caricato su server.</p>
+<h4>Installa l'app sul telefono</h4>
+<ul><li><b>Android (Chrome):</b> menu ⋮ → <b>Installa app</b> (o "Aggiungi a schermata Home").</li>
+<li><b>iPhone (Safari):</b> pulsante Condividi → <b>Aggiungi alla schermata Home</b>.</li></ul>
+<h4>Le 3 cose da fare la prima volta</h4>
+<ol><li><b>Crea la squadra</b> (Partita → + Nuova squadra): nome e categoria.</li>
+<li><b>Aggiungi i giocatori</b> (Rosa): numero, cognome e <b>ruolo</b>. Ne servono almeno 6 più il libero: i ruoli servono per formazione, libero e rotazioni.</li>
+<li><b>Crea la partita</b> (Partita → + Nuova partita): avversario, data, casa/trasferta e formato (meglio dei 5, meglio dei 3 o set fissi).</li></ol>
+<p>Poi tocca <b>▶ Inizia lo scouting</b>.</p>
+<div class="tip">In basso ci sono le 4 sezioni: <b>PARTITA</b> (squadre e partite), <b>ROSA</b>, <b>SCOUT</b> e <b>STAT</b>.</div>`},
+{id:'lineup',ic:'🧩',t:'Formazione e libero',h:`
+<p>All'inizio di ogni set l'app ti chiede la <b>formazione</b>: imposti una volta chi parte in ciascuna zona e l'app <b>ruota da sola</b> a ogni cambio palla.</p>
+<ul><li>Metti i 6 titolari nelle zone (Z4, Z3, Z2 a rete; Z5, Z6, Z1 dietro) e indica il <b>palleggiatore</b>.</li>
+<li>Con <b>Ruota avanti/indietro</b> sposti tutta la formazione se partite da un'altra rotazione.</li>
+<li>Indica <b>chi batte per primo</b>: serve per la rotazione e per side-out / break-point.</li></ul>
+<h4>Il libero</h4>
+<ul><li>Scegli Libero 1 (e, se c'è, Libero 2). Con due liberi puoi usare <b>L1 in ricezione, L2 in difesa</b>.</li>
+<li>In <b>"Il libero entra al posto di"</b> tocca i giocatori che sostituisce (di solito i centrali, ma puoi sceglierne altri).</li>
+<li>Il libero <b>entra da solo</b> quando quei giocatori vanno in seconda linea ed <b>esce</b> quando devono battere.</li></ul>
+<div class="tip">Dal secondo set la formazione è già precompilata con quella del set precedente: controllala e conferma.</div>`},
+{id:'live',ic:'🔴',t:'Scout dal vivo (LIVE)',h:`
+<p>In Scout scegli <b>● LIVE</b>. È pensato per la partita in palestra: pochi tocchi, nessuna traiettoria.</p>
+<h4>Ogni azione in 3 tocchi</h4>
+<ol><li><b>Giocatore</b></li><li><b>Fondamentale</b> (battuta, ricezione, attacco, difesa, muro)</li><li><b>Esito</b> (es. # perfetta/punto, + positiva, − negativa, = errore)</li></ol>
+<p>Il <b>punteggio si aggiorna da solo</b> con gli esiti che chiudono lo scambio (ace, punto, errore, murato…) e la rotazione avanza al cambio palla.</p>
+<h4>Per andare più veloce</h4>
+<ul><li>A inizio scambio l'app <b>propone già il battitore</b> (o la ricezione).</li>
+<li><b>✓ Standard</b> registra con un tocco l'esito più comune.</li>
+<li><b>⚡ Veloce</b>: dopo il giocatore salta subito al fondamentale; <b>↺ Stesso giocatore</b> ripete l'ultimo.</li>
+<li><b>Punto rapido</b> (in alto): punto nostro, errore avversario, errore nostro, punto avversario… quando non vuoi registrare chi l'ha fatto.</li></ul>
+<div class="tip">Nel LIVE dell'attacco si segnano solo gli esiti che chiudono lo scambio (punto, errore, murato). Per il dettaglio completo usa lo scout da video.</div>`},
+{id:'video',ic:'🎬',t:'Scout da video',h:`
+<p>Lo scout da video è il modo più completo di usare VBScout: rivedi la partita con calma, registri <b>ogni tocco</b> con le <b>traiettorie</b>, e ogni azione resta <b>agganciata al momento del video</b>, così poi la rivedi con un tocco.</p>
+<h4>1 · Prepara la partita</h4>
+<ul><li><b>Partita già scoutata dal vivo?</b> Apri la partita (Partita → tocca la partita → Modifica) e scegli <b>📹 Duplica per scout da video</b>. Nasce una copia "(video)" con le stesse formazioni, vuota, pronta da scoutare.</li>
+<li><b>Partita non scoutata?</b> Crea la partita normalmente e scoutala direttamente in modalità VIDEO.</li></ul>
+<h4>2 · Carica il video</h4>
+<p>In Scout tocca <b>▶ VIDEO</b>, poi scegli la sorgente:</p>
+<ul><li><b>📁 File locale</b>: il video registrato sul telefono o tablet. Funziona <b>anche offline</b> e il file non viene caricato da nessuna parte. Se chiudi l'app, al rientro devi <b>ricaricare il file</b> (le azioni già fatte restano).</li>
+<li><b>▶ YouTube</b>: incolla il link della partita (anche "non in elenco"). Serve la connessione.</li></ul>
+<h4>3 · I comandi del video</h4>
+<ul><li><b>⏪ / ⏩</b>: indietro / avanti di 3 secondi.</li>
+<li><b>⏩ 1×</b>: velocità 1× → 1,5× → 2× → 0,5×. A 1,5× o 2× scorri le fasi morte; a 0,5× guardi bene un attacco o un muro.</li>
+<li><b>⏸ Auto-pausa</b>: il video si ferma mentre scegli giocatore e fondamentale e <b>riparte da solo</b> dopo l'esito. È il modo più comodo per non perdere azioni.</li>
+<li><b>⏮ Scambio / Scambio ⏭</b>: salta all'inizio dello scambio precedente o successivo (tra quelli già scoutati). Utile per ricontrollare.</li>
+<li><b>⧉ Affianca</b> (tablet o PC): video e scout uno accanto all'altro.</li></ul>
+<h4>4 · Cosa registri in più rispetto al LIVE</h4>
+<ul><li><b>Tutti i fondamentali</b>, compresa l'<b>alzata</b> con la direzione (dove alza il palleggiatore).</li>
+<li><b>Tutti gli esiti</b> dell'attacco: punto, positivo, difeso, tocco muro, murato, errore → in Stat compaiono <b>Kill%</b> ed <b>Efficienza</b>.</li>
+<li>Le <b>traiettorie</b>: tocchi sul campo il punto di partenza e quello di arrivo. Sono obbligatorie per battuta, attacco e alzata, facoltative per ricezione e difesa.</li></ul>
+<h4>5 · Sequenza automatica 🔁</h4>
+<p>Con <b>🔁 Sequenza auto</b> attiva, dopo ogni esito l'app <b>propone già il fondamentale successivo</b> (ricezione → alzata → attacco → difesa…) e, quando è chiaro, anche il giocatore: il battitore in zona 1 e il palleggiatore per l'alzata. Tu tocchi solo il giocatore e l'esito: si va molto più veloci.</p>
+<h4>6 · Rivedere le azioni</h4>
+<ul><li><b>Azioni registrate</b> (sotto lo scout): tocca il minuto <b>▶ 12:34</b> per rivedere quell'azione.</li>
+<li><b>Stat → Numeri</b>: nella tabella per giocatore tocca <b>Rivedi le azioni in video</b> → parte la sequenza di tutte le sue azioni.</li>
+<li><b>Stat → Mappa</b>: i punti con il <b>bordo bianco</b> hanno il video, toccali per rivederli; <b>Riproduci tutte in sequenza</b> crea una playlist (es. tutti gli attacchi da zona 4).</li>
+<li>Nella playlist usi <b>⏮ ⏭</b> per passare da una clip all'altra e <b>✕</b> per chiudere. Ogni clip parte 5 secondi prima del momento in cui hai registrato l'azione.</li></ul>
+<div class="tip"><b>Consigli</b><br>• Registra l'esito <b>appena finisce l'azione</b>: così la clip è centrata.<br>• Per riprendere: telefono fisso dietro il campo, un po' in alto, con tutto il campo inquadrato.<br>• Una partita intera si scouta bene a 1,5× con Auto-pausa e Sequenza auto attive.<br>• Le clip sono perfette da mostrare alla squadra: "ecco i nostri attacchi murati".</div>`},
+{id:'score',ic:'🔄',t:'Cambi, punteggio e correzioni',h:`
+<ul><li><b>Cambio</b>: tocca Cambio, scegli chi esce e chi entra, conferma. La formazione e il libero si aggiornano.</li>
+<li><b>BAT / RIC</b>: indica chi sta battendo. Se l'app è fuori fase, toccalo per correggere.</li>
+<li><b>Rotazione ◀ ▶</b>: sposta la rotazione a mano se serve.</li>
+<li><b>+ / −</b> sotto i punteggi: correzione manuale del punteggio (finisce nelle statistiche come "correzione").</li>
+<li><b>Azione sbagliata?</b> In <b>Azioni registrate</b> eliminala con il pulsante accanto (per qualche secondo puoi ancora toccare <b>Annulla</b>).</li></ul>`},
+{id:'end',ic:'🏁',t:'Fine set e fine partita',h:`
+<ul><li>Quando una squadra arriva a 25 (15 nel tie-break) con 2 punti di vantaggio, l'app propone di <b>chiudere il set</b>. Se un punto è sbagliato tocca <b>Continua</b> e correggi.</li>
+<li>Puoi anche chiuderlo a mano con <b>Chiudi set ▸</b>.</li>
+<li>A fine partita l'app propone <b>Report PDF</b> e <b>Backup</b>.</li>
+<li>Partita chiusa per sbaglio? Aprila e tocca <b>Riapri partita</b>.</li></ul>`},
+{id:'stats',ic:'📊',t:'Statistiche: cosa significano',h:`
+<p>In <b>STAT</b> filtri per partita (o tutte le partite), giocatore e fondamentale.</p>
+<ul><li><b>Side-out</b>: % di scambi vinti quando <b>riceviamo</b> (fase K1).</li>
+<li><b>Break-point</b>: % di scambi vinti quando <b>battiamo</b> (fase K2).</li>
+<li><b>Ricezione pos.</b>: % di ricezioni perfette (#) o positive (+).</li>
+<li><b>Efficienza</b>: (positivi − errori) sul totale. Per l'attacco: (punti − errori − murati) / totale.</li>
+<li><b>Kill%</b>: attacchi punto sul totale (solo scout da video).</li>
+<li><b>Bilancio punti</b>: da dove arrivano i punti fatti e persi (ace, attacco, muro, errori…).</li>
+<li><b>Per rotazione</b> (P1–P6 = zona del palleggiatore): in quale rotazione fate o perdete punti.</li>
+<li><b>Giocatore × Fondamentale</b>: tocca una cella per filtrare su quel giocatore e fondamentale.</li></ul>`},
+{id:'map',ic:'🗺️',t:'Mappe',h:`
+<ul><li><b>Ricezione</b>: dove cade la battuta avversaria, con la densità per zona.</li>
+<li><b>Traiettorie</b>: battute, attacchi e alzate disegnate sul campo, colorate per esito.</li>
+<li>Usa i <b>filtri</b> (giocatore, fondamentale, partita) per vedere, per esempio, dove attacca il tuo opposto.</li>
+<li>I punti con il <b>bordo bianco</b> hanno il video: toccali per rivedere l'azione.</li></ul>`},
+{id:'report',ic:'📄',t:'Report PDF e condivisione',h:`
+<ul><li><b>Report PDF</b>: da Partita (pulsante Report PDF) oppure da Stat → Dati. Funziona anche offline e si condivide su WhatsApp o email.</li>
+<li><b>📤 Esporta questa partita</b> (Partita → Modifica partita): crea un file con la sola partita, da mandare a un altro allenatore. Lui la apre da Stat → Dati → <b>Ripristina da backup</b>.</li>
+<li>Stat → Dati offre anche il report <b>HTML</b> stampabile e l'export <b>CSV</b> (per Excel).</li></ul>`},
+{id:'backup',ic:'💾',t:'Backup e cambio telefono',h:`
+<p>I dati sono <b>solo su questo dispositivo</b>. Se perdi o cambi telefono, senza backup li perdi.</p>
+<ul><li>Stat → Dati → <b>⬇ Backup JSON</b>: salva un file con tutto. Conservalo fuori dal telefono (Drive, email).</li>
+<li>Sul nuovo telefono: Stat → Dati → <b>⬆ Ripristina da backup</b>.</li>
+<li>L'app ti ricorda il backup se non lo fai da più di 7 giorni.</li></ul>
+<div class="tip">Fai un backup dopo ogni partita: ci vogliono 5 secondi.</div>`},
+{id:'lic',ic:'🔑',t:'Versione demo, account e licenza',h:`
+<ul><li>La <b>demo</b> è gratuita: 1 squadra e 2 partite, con tutte le funzioni.</li>
+<li>La <b>versione completa</b> (pass stagione) si acquista dall'app: crei l'account (email e password) e paghi con carta, Apple Pay o Google Pay.</li>
+<li>La licenza vale su <b>un dispositivo</b>. Per spostarla: account → <b>Usa la licenza su questo dispositivo</b> (al massimo una volta ogni 7 giorni). Squadre e partite si spostano con Backup e Ripristina.</li>
+<li><b>Offline</b> la licenza resta valida 14 giorni: poi basta collegarsi a internet un attimo.</li></ul>`},
+{id:'faq',ic:'❓',t:'Problemi frequenti',h:`
+<ul><li><b>Compare "Nuova versione disponibile"</b>: toccalo per aggiornare l'app.</li>
+<li><b>YouTube non si carica</b>: serve la connessione. Offline usa un file video locale.</li>
+<li><b>Il video locale è sparito</b>: è normale dopo aver chiuso l'app, ricaricalo da "Carica video dal dispositivo". Le azioni restano.</li>
+<li><b>La rotazione non torna</b>: controlla BAT/RIC e la formazione, poi correggi con le frecce della rotazione.</li>
+<li><b>Il libero non entra</b>: in Formazione controlla "Il libero entra al posto di".</li>
+<li>Per qualsiasi dubbio scrivimi: <a href="mailto:vbscout.coach@gmail.com?subject=VBScout">vbscout.coach@gmail.com</a></li></ul>`}
+];
+// apre la guida; se openId è indicato apre quel capitolo e ci scorre
+function guideSheet(openId){
+  modal(`<h2 style="margin:0 0 6px;font-size:22px">${t('gd.btn')}</h2>
+    ${t('gd.itOnly')?`<p style="color:var(--mut);font-size:13px;margin:0 0 8px">🇮🇹 ${t('gd.itOnly')}</p>`:''}
+    <p style="color:var(--mut2);font-size:13px;margin:0 0 12px">${t('gd.intro')}</p>
+    <div lang="it">${GUIDE.map(g=>`<details class="gd" data-gd="${g.id}"${g.id===openId?' open':''}><summary><span aria-hidden="true">${g.ic}</span>${g.t}</summary><div class="gdb">${g.h}</div></details>`).join('')}</div>
+    <button class="btn pri full" id="gdClose" style="margin-top:8px">${t('c.close')}</button>`);
+  $('#gdClose').onclick=()=>closeModal();
+  if(openId){const d=$(`#modalRoot [data-gd="${openId}"]`);if(d)setTimeout(()=>d.scrollIntoView({block:'start'}),60);}
+}
+// qualsiasi pulsante con data-guide apre la guida (data-guide="video" apre quel capitolo)
+document.addEventListener('click',e=>{const g=e.target.closest('[data-guide]');if(g){e.preventDefault();guideSheet(g.dataset.guide||null);}});
 function settingsSheet(again){
   const mode=themeMode();
   modal(`<h2 style="margin:0 0 16px;font-size:22px">⚙️ ${t('set.title')}</h2>
+    <button class="btn gho full" data-guide="" style="margin-bottom:14px">${t('gd.btn')}</button>
     <div class="setgrp"><label class="fld">${t('set.theme')}</label>
       <div class="seg" id="themeSeg" role="radiogroup" aria-label="${t('set.theme')}">
         ${THEMES.map(m=>`<button type="button" role="radio" data-theme-mode="${m}" class="${mode===m?'on':''}" aria-checked="${mode===m}">${t('set.theme.'+m)}</button>`).join('')}
